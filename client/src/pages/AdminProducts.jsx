@@ -1,7 +1,9 @@
 import  { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 const AdminProducts = () => {
+  const baseUrl = useBaseUrl();
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -19,7 +21,7 @@ const AdminProducts = () => {
   // Завантаження товарів
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/product/listProduct');
+      const response = await axios.get(`${baseUrl}/api/product/listProduct`);
       setProducts(response.data);
     } catch (error) {
       console.error('Помилка при завантаженні товарів:', error);
@@ -29,7 +31,7 @@ const AdminProducts = () => {
   // Завантаження категорій
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/product/getCategoryList');
+      const response = await axios.get(`${baseUrl}/api/product/getCategoryList`);
       setCategories(response.data);
     } catch (error) {
       console.error('Помилка при завантаженні категорій:', error);
@@ -59,7 +61,7 @@ const AdminProducts = () => {
     newProduct.images.forEach(image => formData.append('images', image));
 
     try {
-      const response = await axios.post('http://localhost:5000/api/product/addProduct', formData, {
+      const response = await axios.post(`${baseUrl}/api/product/addProduct`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setProducts([...products, { ...newProduct, product_id: response.data.productId }]);
@@ -73,7 +75,7 @@ const AdminProducts = () => {
     console.log("productId:", productId);
     if (window.confirm('Ви впевнені, що хочете видалити цей товар?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/product/delProduct`, {
+        await axios.delete(`${baseUrl}/api/product/delProduct`, {
           params: { productId }
         });
         setProducts(products.filter(product => product.product_id !== productId));
@@ -95,7 +97,7 @@ const AdminProducts = () => {
     console.log("updatedCategory:", updatedCategory);
 
     try {
-      await axios.put(`http://localhost:5000/api/product/updCategory`, {
+      await axios.put(`${baseUrl}/api/product/updCategory`, {
         categoryId,
         name: updatedCategory
       });
@@ -113,7 +115,7 @@ const AdminProducts = () => {
     console.log("categoryId:", categoryId);
     if (window.confirm('Ви впевнені, що хочете видалити цю категорію?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/product/delCategory`, {
+        await axios.delete(`${baseUrl}/api/product/delCategory`, {
           params: { categoryId }
         });
         setCategories(categories.filter(category => category.category_id !== categoryId));
@@ -128,7 +130,7 @@ const AdminProducts = () => {
     e.preventDefault();
     if (!newCategory) return;
     try {
-      const response = await axios.post('http://localhost:5000/api/product/addCategory', { name: newCategory });
+      const response = await axios.post(`${baseUrl}/api/product/addCategory`, { name: newCategory });
       setCategories([...categories, response.data]);
       setNewCategory('');
       fetchCategories();

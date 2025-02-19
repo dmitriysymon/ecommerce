@@ -1,10 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import axios from "axios";
+import { toast } from 'react-custom-alert';
+import { useCart } from "../context/CartContext";
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 const ProductPage = () => {
+  const baseUrl = useBaseUrl();
   const { state } = useLocation();
   const { id } = useParams();
   const product = state?.product;
+  const { fetchCartItemCount, loadLocalCartCount } = useCart();
 
   if (!product) {
     return <div className="text-center text-xl mt-20">Товар не знайдено</div>;
@@ -13,16 +19,61 @@ const ProductPage = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const nextImage = () => {
-    setCurrentImage((prev) => (prev + 1) % product.images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImage((prev) => (prev - 1 + product.images.length) % product.images.length);
-  };
-
   const handleQuantityChange = (amount) => {
     setQuantity((prev) => Math.max(1, prev + amount));
+  };
+
+  const handleAddToCart = async () => {
+    try {
+      const response = await fetch(`${baseUrl}/api/session/getUser`, {
+        method: "GET",
+        credentials: "include",
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        const user_id = data.userData?.user_id;
+  
+        if (user_id) {
+          // Якщо користувач авторизований, додаємо товар в БД
+          const image_url = product.images[0];
+          console.log('Шлях до фото', image_url)
+          await axios.post(`${baseUrl}/api/cart/addToCart`, {
+            product_id: product.product_id,
+            quantity,
+            user_id,
+            image_url,
+          });
+          toast.success("Товар додано до кошика!");
+          fetchCartItemCount(user_id);
+        } else {
+          addToLocalCart(product, quantity);
+        }
+      } else {
+        addToLocalCart(product, quantity);
+      }
+    } catch (error) {
+      console.log("Помилка отримання користувача", error);
+      addToLocalCart(product, quantity);
+    }
+  };
+  
+  // Функція для додавання товару в localStorage
+  const addToLocalCart = (product, quantity) => {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+  
+    const existingItem = cart.find((item) => item.product_id === product.product_id);
+    
+    if (existingItem) {
+      existingItem.quantity += quantity;
+    } else {
+      const image_url = product.images[0];
+      cart.push({ ...product, quantity, image_url });
+    }
+
+    loadLocalCartCount();
+    localStorage.setItem("cart", JSON.stringify(cart));
+    toast.success("Товар додано до кошика (локально)!");
   };
 
   return (
@@ -55,30 +106,39 @@ const ProductPage = () => {
         {/* Інформація про товар */}
         <div className="space-y-6">
           <h1 className="text-4xl font-bold">{product.name}</h1>
-          <p className="text-2xl text-gray-700 font-semibold">₴{product.price}</p>
           <p className="text-gray-600 leading-relaxed">{product.description}</p>
-          <p className="text-gray-600 leading-relaxed">{product.category_name}</p>
+          <p className="text-gray-600 leading-relaxed">
+            {product.category_name}
+          </p>
           <p className="text-sm text-gray-500">Артикул: {product.sku}</p>
 
-          {/* Вибір кількості */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => handleQuantityChange(-1)}
-              className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full text-xl"
-            >
-              -
-            </button>
-            <span className="text-xl font-semibold">{quantity}</span>
-            <button
-              onClick={() => handleQuantityChange(1)}
-              className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full text-xl"
-            >
-              +
-            </button>
+          {/* Вибір кількості та ціна */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => handleQuantityChange(-1)}
+                className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full text-xl"
+              >
+                -
+              </button>
+              <span className="text-xl font-semibold">{quantity}</span>
+              <button
+                onClick={() => handleQuantityChange(1)}
+                className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full text-xl"
+              >
+                +
+              </button>
+            </div>
+            <p className="flex-1 text-center mr-28 text-2xl text-gray-700 font-semibold">
+              ₴{(product.price * quantity).toFixed(2)}
+            </p>
           </div>
 
           {/* Кнопка Купити */}
-          <button className="w-full py-3 bg-black text-white text-lg rounded-lg hover:bg-gray-800 transition">
+          <button
+            onClick={handleAddToCart}
+            className="w-full py-3 bg-black text-white text-lg rounded-lg hover:bg-gray-800 transition"
+          >
             Купити
           </button>
         </div>

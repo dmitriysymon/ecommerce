@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import '../res/styles/UserProfile.css'; // Наш кастомний CSS
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 // Компонент для особистої інформації
 const PersonalInfo = ({ userData }) => {
@@ -43,11 +44,13 @@ const UserProfile = () => {
   const [orders, setOrders] = useState([]); // Якщо історія покупок потрібна
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const baseUrl = useBaseUrl();
+
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/session/getUser', {
+        const response = await fetch(`${baseUrl}/api/session/getUser`, {
           method: 'GET',
           credentials: 'include',
         });

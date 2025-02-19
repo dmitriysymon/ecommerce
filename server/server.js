@@ -4,10 +4,10 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const sessionConfig = require('./config/sessionConfig');
 const authRoutes = require('./routes/authRoutes');
-const authRoutes1 = require("./routes/auth");
 const regRoutes = require('./routes/regRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const productRoutes = require('./routes/productRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 const app = express();
 
@@ -26,8 +26,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/register', regRoutes);
-app.use('/api/product',productRoutes);
-app.use(authRoutes1);
+app.use('/api/product', productRoutes);
+app.use('/api/cart', cartRoutes);
 
 
 app._router.stack.forEach((middleware) => {
@@ -43,6 +43,7 @@ app._router.stack.forEach((middleware) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`Сервер запущено на порту ${PORT}`);
 });

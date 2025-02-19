@@ -14,4 +14,92 @@
       @apply [appearance:textfield];
     }
   }
+
+
+  @media (max-width: 640px) {
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden; /* Запобігає горизонтальному скролу */
+    }
+    /* Для хедера */
+    .header {
+      font-size: 14px; /* Зменшуємо розмір шрифта */
+      padding: 8px; /* Зменшуємо відступи */
+    }
+  
+    /* Адаптація меню */
+    .header nav {
+      font-size: 14px; /* Зменшуємо розмір шрифтів для мобільних */
+      padding: 10px; /* Збільшуємо відступи для мобільних */
+    }
+  
+    .header .container {
+      padding: 0 10px; /* Менші відступи для мобільних пристроїв */
+    }
+  
+    .header .md:hidden {
+      display: block; /* Перемикаємо меню на мобільних пристроях */
+    }
+  
+    /* Адаптація футера */
+    footer {
+      font-size: 12px; /* Зменшуємо шрифт для мобільних */
+      padding: 10px 0; /* Менше відступів для мобільних */
+    }
+  
+    footer .flex {
+      flex-direction: column; /* Використовуємо вертикальне вирівнювання для мобільних */
+      align-items: center;
+    }
+  
+    footer ul {
+      flex-direction: column; /* Переводимо список в стовпчик на мобільних */
+      text-align: center;
+    }
+  
+    footer ul li {
+      margin-bottom: 10px; /* Додаємо відступи між елементами */
+    }
+  
+    footer ul li:last-child {
+      margin-bottom: 0; /* Видаляємо відступ для останнього елемента */
+    }
+
+    .new-arrivals-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding: 0 10px; /* Можна додати відступи */
+    }
+  
+    /* Адаптація карток товарів */
+    .new-arrivals-item {
+      flex: 0 0 auto;
+      width: 33%; /* 3 товари на екрані */
+      padding: 8px;
+    }
+  
+    /* Адаптація кнопок прокручування */
+    .prev-button,
+    .next-button {
+      width: 30px;
+      height: 30px;
+    }
+  
+    /* Покращення позиціювання кнопок */
+    .prev-button {
+      left: 10px;
+    }
+  
+    .next-button {
+      right: 10px;
+    }
+    .main-component{
+      width: full;
+    }
+  }
+  
+  
   

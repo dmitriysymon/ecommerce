@@ -4,8 +4,10 @@ import { X } from 'lucide-react';
 import Google_Icon from "../res/icons/google.png";
 import Facebook_Icon from "../res/icons/facebook.png";
 import "../App.css";
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 const ModalReg = ({ isOpen, setIsOpen, switchToAuth }) => {
+  const baseUrl = useBaseUrl();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,7 +31,7 @@ const ModalReg = ({ isOpen, setIsOpen, switchToAuth }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/register/reg', {
+      const response = await fetch(`${baseUrl}/api/register/reg`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

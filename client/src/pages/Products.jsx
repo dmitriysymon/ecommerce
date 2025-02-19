@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 const Products = () => {
+  const baseUrl = useBaseUrl();
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sortOption, setSortOption] = useState("priceAsc");
   const [products, setProducts] = useState([]);
@@ -15,7 +17,7 @@ const Products = () => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5000/api/product/listProduct"
+          `${baseUrl}/api/product/listProduct`
         );
         setProducts(response.data);
         setLoading(false);

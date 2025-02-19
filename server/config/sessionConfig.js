@@ -7,7 +7,7 @@ const sessionConfig = session({
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 3600000, // 1 година
+    maxAge: 36000000, // 1 година
   },
 });
 

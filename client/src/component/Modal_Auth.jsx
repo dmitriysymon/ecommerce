@@ -3,18 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Google_Icon from "../res/icons/google.png";
 import Facebook_Icon from "../res/icons/facebook.png";
-// import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useBaseUrl } from "../context/BaseUrlContext";
 
 const ModalAuth = ({ isOpen, setIsOpen, switchToReg }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
-
+  const baseUrl = useBaseUrl();
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -22,7 +21,7 @@ const ModalAuth = ({ isOpen, setIsOpen, switchToReg }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
