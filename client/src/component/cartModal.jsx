@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { fetchUserData } from "../services/userService";
 import { useCart } from "../context/CartContext";
 import deleteIcon from "../res/icons/delete.png";
 import { useBaseUrl } from "../context/BaseUrlContext";
@@ -15,38 +16,13 @@ const CartModal = ({ isOpen, closeCart }) => {
   const { fetchCartItemCount, loadLocalCartCount } = useCart();
 
   // Функція для отримання даних користувача
-  const fetchUser = async () => {
-    try {
-      const response = await fetch(`${baseUrl}/api/session/getUser`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log("Користувач не авторизований");
-          setUserData(false); // Позначаємо, що користувача немає
-          return;
-        }
-        throw new Error("Не вдалося отримати дані користувача");
-      }
-
-      const data = await response.json();
-
-      if (!data.userData) {
-        setUserData(false); // Позначаємо, що користувача немає
-        return;
-      }
-
-      setUserData(data.userData);
-    } catch (error) {
-      console.error("Помилка при отриманні користувача:", error);
-      setUserData(false); // Якщо сталася помилка, вважаємо, що користувача немає
-    }
-  };
 
   useEffect(() => {
     if (isOpen) {
+      const fetchUser = async () => {
+        const data = await fetchUserData(baseUrl);
+        setUserData(data); // Встановлюємо отримані дані або false
+      };
       fetchUser();
     }
   }, [isOpen]);

@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from "react";
+import { useNovaPoshta } from "../services/novaposhta";
 import axios from "axios";
 import { useBaseUrl } from "../context/BaseUrlContext";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import Select from "react-select";
+import debounce from "lodash.debounce"; // Імпорт дебаунсінгу
 
 export const CheckoutPage = () => {
   const baseUrl = useBaseUrl();
   const { state } = useLocation();
+  const apiKey = "4308a61be59b3baa8155882c7baad178"; // Замініть на свій ключ API Нової Пошти
+
+  const { cities, warehouses, setSelectedCityRef } = useNovaPoshta(apiKey);
+
   const [userData, setUserData] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [orderData, setOrderData] = useState({
     name: "",
+    lastname: "",
     phone: "",
+    email: "",
     address: "",
     novaPoshtaBranch: "",
   });
+  const [cityInput, setCityInput] = useState(""); // Додано для введення міста
+  const [cityOptions, setCityOptions] = useState([]); // Стан для відображення опцій
 
-  // Отримуємо дані користувача
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -31,9 +41,14 @@ export const CheckoutPage = () => {
     fetchUser();
   }, [baseUrl]);
 
-  // Отримуємо товари в кошику
   useEffect(() => {
     if (userData) {
+      setOrderData({
+        name: userData.username || "",
+        lastname: userData.lastname || "",
+        phone: userData.user_number || "",
+        email: userData.email || "",
+      });
       fetchCartItems();
     } else {
       loadLocalCart();
@@ -46,6 +61,11 @@ export const CheckoutPage = () => {
         `${baseUrl}/api/cart/getCartItems/${userData.user_id}`
       );
       setCartItems(response.data);
+      const response1 = await axios.get(
+        `${baseUrl}/api/cart/getTotalPrice/${userData.user_id}`
+      );
+      setTotalPrice(response1.data.totalPrice)
+
     } catch (error) {
       console.error("Помилка при отриманні товарів", error);
     }
@@ -63,11 +83,59 @@ export const CheckoutPage = () => {
     setOrderData({ ...orderData, [e.target.name]: e.target.value });
   };
 
+  // Дебаунсінг для введеного тексту міста
+  const debouncedCityInputChange = debounce((inputValue) => {
+    setCityInput(inputValue);
+  }, 300); // Затримка в 300мс після останнього введеного символу
+
+  const handleCityInputChange = (inputValue) => {
+    debouncedCityInputChange(inputValue);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Замовлення відправлено:", orderData, cartItems);
-    // Тут можна додати логіку відправлення замовлення в БД і Телеграм
+    try {
+      const response = await axios.post(`${baseUrl}/api/telegram/send-order`, {
+        ...orderData,
+        cartItems,
+        totalPrice,
+      });
+  
+      if (response.data.success) {
+        alert("Замовлення успішно відправлено!");
+      } else {
+        alert("Помилка під час відправки замовлення.");
+      }
+    } catch (error) {
+      console.error("Помилка:", error);
+      alert("Не вдалося відправити замовлення.");
+    }
   };
+
+  // Логіка для отримання результатів пошуку по всьому списку міст з сортуванням
+  useEffect(() => {
+    const filteredCities = cities
+      .filter((city) =>
+        city.Description.toLowerCase().includes(cityInput.toLowerCase())
+      )
+      // Сортуємо за найбільшою схожістю до введеного тексту
+      .sort((a, b) => {
+        const similarityA = a.Description.toLowerCase().indexOf(cityInput.toLowerCase());
+        const similarityB = b.Description.toLowerCase().indexOf(cityInput.toLowerCase());
+        return similarityA - similarityB; // Міста, що більше схожі, з'являться першими
+      });
+
+    // Обмежуємо до 50 елементів
+    setCityOptions(filteredCities.slice(0, 50).map((city) => ({
+      value: city.Ref,
+      label: city.Description,
+    })));
+  }, [cityInput, cities]);
+
+  const warehouseOptions = warehouses.map((warehouse) => ({
+    value: warehouse.Ref,
+    label: warehouse.Description,
+  }));
 
   return (
     <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow-lg">
@@ -83,6 +151,24 @@ export const CheckoutPage = () => {
           className="w-full p-2 border rounded mb-3"
         />
         <input
+          type="text"
+          name="lastname"
+          value={orderData.lastname}
+          onChange={handleInputChange}
+          placeholder="Прізвище"
+          required
+          className="w-full p-2 border rounded mb-3"
+        />
+        <input
+          type="email"
+          name="email"
+          value={orderData.email}
+          onChange={handleInputChange}
+          placeholder="Електронна адреса"
+          required
+          className="w-full p-2 border rounded mb-3"
+        />
+        <input
           type="tel"
           name="phone"
           value={orderData.phone}
@@ -91,15 +177,32 @@ export const CheckoutPage = () => {
           required
           className="w-full p-2 border rounded mb-3"
         />
-        <input
-          type="text"
-          name="novaPoshtaBranch"
-          value={orderData.novaPoshtaBranch}
-          onChange={handleInputChange}
-          placeholder="Відділення Нової Пошти"
+        {/* Вибір міста */}
+        <Select
+          name="city"
+          options={cityOptions}
+          onInputChange={handleCityInputChange} // Викликаємо метод для обробки введеного тексту
+          onChange={(selectedOption) => setSelectedCityRef(selectedOption.value)}
           required
-          className="w-full p-2 border rounded mb-3"
+          placeholder="Оберіть місто"
+          className="mb-3"
+          menuPortalTarget={document.body} // Рендеринг меню поза компонентом
+          menuPosition="fixed" // Фіксоване меню
         />
+
+        {/* Вибір відділення */}
+        <Select
+          name="novaPoshtaBranch"
+          options={warehouseOptions}
+          value={warehouseOptions.find(option => option.value === orderData.novaPoshtaBranch)}
+          onChange={(selectedOption) => setOrderData({ ...orderData, novaPoshtaBranch: selectedOption.value })}
+          required
+          placeholder="Оберіть відділення"
+          className="mb-3"
+          menuPortalTarget={document.body} // Рендеринг меню поза компонентом
+          menuPosition="fixed" // Фіксоване меню
+        />
+
         <h3 className="text-xl font-semibold mb-3">Ваше замовлення</h3>
         {cartItems.map((item, index) => (
           <div key={index} className="flex justify-between p-2 border-b">

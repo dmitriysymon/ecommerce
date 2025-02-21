@@ -1,22 +1,28 @@
-import  { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { useBaseUrl } from "../context/BaseUrlContext";
 
 const AdminProducts = () => {
   const baseUrl = useBaseUrl();
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState("products");
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [mainCategories, setMainCategories] = useState([]);
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    description: '',
-    price: '',
-    stock: '',
-    category: '',
-    sku: '',
-    images: []
+    name: "",
+    description: "",
+    price: "",
+    stock: "",
+    category: "",
+    sku: "",
+    images: [],
+    sex: "",
   });
-  const [newCategory, setNewCategory] = useState('');
+  const [newCategory, setNewCategory] = useState({
+    name: "",
+    mainCategory: "",
+  });
+  const [newMainCategory, setNewMainCategory] = useState("");
 
   // Завантаження товарів
   const fetchProducts = async () => {
@@ -24,23 +30,37 @@ const AdminProducts = () => {
       const response = await axios.get(`${baseUrl}/api/product/listProduct`);
       setProducts(response.data);
     } catch (error) {
-      console.error('Помилка при завантаженні товарів:', error);
+      console.error("Помилка при завантаженні товарів:", error);
     }
   };
 
   // Завантаження категорій
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(`${baseUrl}/api/product/getCategoryList`);
+      const response = await axios.get(
+        `${baseUrl}/api/product/getCategoryList`
+      );
       setCategories(response.data);
     } catch (error) {
-      console.error('Помилка при завантаженні категорій:', error);
+      console.error("Помилка при завантаженні категорій:", error);
+    }
+  };
+
+  const fetchMainCategories = async () => {
+    try {
+      const response = await axios.get(
+        `${baseUrl}/api/product/getMainCategoryList`
+      );
+      setMainCategories(response.data);
+    } catch (error) {
+      console.error("Помилка при завантаженні головних категорій:", error);
     }
   };
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchMainCategories();
   }, []);
 
   const generateRandomSku = () => {
@@ -48,39 +68,53 @@ const AdminProducts = () => {
     setNewProduct({ ...newProduct, sku: randomSku });
   };
 
-  // Додавання нового товару
   const handleAddProduct = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('name', newProduct.name);
-    formData.append('description', newProduct.description);
-    formData.append('price', newProduct.price);
-    formData.append('category', newProduct.category);
-    formData.append('stock', newProduct.stock);
-    formData.append('sku', newProduct.sku);
-    newProduct.images.forEach(image => formData.append('images', image));
+    formData.append("name", newProduct.name);
+    formData.append("description", newProduct.description);
+    formData.append("price", newProduct.price);
+    formData.append("category", newProduct.category);
+    formData.append("stock", newProduct.stock);
+    formData.append("sku", newProduct.sku);
+    formData.append("sex", newProduct.sex);
+    newProduct.images.forEach((image) => formData.append("images", image));
 
     try {
-      const response = await axios.post(`${baseUrl}/api/product/addProduct`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await axios.post(
+        `${baseUrl}/api/product/addProduct`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      setProducts([
+        ...products,
+        { ...newProduct, product_id: response.data.productId },
+      ]);
+      setNewProduct({
+        name: "",
+        description: "",
+        price: "",
+        stock: "",
+        images: [],
       });
-      setProducts([...products, { ...newProduct, product_id: response.data.productId }]);
-      setNewProduct({ name: '', description: '', price: '', stock: '', images: [] });
     } catch (error) {
-      console.error('Помилка при додаванні товару:', error);
+      console.error("Помилка при додаванні товару:", error);
     }
   };
 
   const handleDeleteProduct = async (productId) => {
-    console.log("productId:", productId);
-    if (window.confirm('Ви впевнені, що хочете видалити цей товар?')) {
+    if (window.confirm("Ви впевнені, що хочете видалити цей товар?")) {
       try {
         await axios.delete(`${baseUrl}/api/product/delProduct`, {
-          params: { productId }
+          params: { productId },
         });
-        setProducts(products.filter(product => product.product_id !== productId));
+        setProducts(
+          products.filter((product) => product.product_id !== productId)
+        );
       } catch (error) {
-        console.error('Помилка при видаленні товару:', error);
+        console.error("Помилка при видаленні товару:", error);
       }
     }
   };
@@ -90,52 +124,98 @@ const AdminProducts = () => {
   };
 
   const handleEditCategory = async (categoryId) => {
-    const updatedCategory = prompt('Введіть нову назву категорії:');
+    const updatedCategory = prompt("Введіть нову назву категорії:");
     if (!updatedCategory) return;
-
-    console.log("categoryId:", categoryId);
-    console.log("updatedCategory:", updatedCategory);
 
     try {
       await axios.put(`${baseUrl}/api/product/updCategory`, {
         categoryId,
-        name: updatedCategory
+        name: updatedCategory,
       });
-      setCategories(categories.map(category =>
-        category.category_id === categoryId ? { ...category, name: updatedCategory } : category
-      ));
-
-      fetchCategories();
+      setCategories(
+        categories.map((category) =>
+          category.category_id === categoryId
+            ? { ...category, name: updatedCategory }
+            : category
+        )
+      );
     } catch (error) {
-      console.error('Помилка при оновленні категорії:', error);
+      console.error("Помилка при оновленні категорії:", error);
     }
   };
 
   const handleDeleteCategory = async (categoryId) => {
-    console.log("categoryId:", categoryId);
-    if (window.confirm('Ви впевнені, що хочете видалити цю категорію?')) {
+    if (window.confirm("Ви впевнені, що хочете видалити цю категорію?")) {
       try {
         await axios.delete(`${baseUrl}/api/product/delCategory`, {
-          params: { categoryId }
+          params: { categoryId },
         });
-        setCategories(categories.filter(category => category.category_id !== categoryId));
+        setCategories(
+          categories.filter((category) => category.category_id !== categoryId)
+        );
         fetchCategories();
       } catch (error) {
-        console.error('Помилка при видаленні категорії:', error);
+        console.error("Помилка при видаленні категорії:", error);
       }
     }
   };
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
-    if (!newCategory) return;
+    if (!newCategory.name || !newCategory.mainCategory) {
+      console.log(
+        "отримані дані: ",
+        newCategory.name,
+        newCategory.mainCategory
+      );
+      return;
+    } // Перевірка на наявність даних
     try {
-      const response = await axios.post(`${baseUrl}/api/product/addCategory`, { name: newCategory });
+      const response = await axios.post(`${baseUrl}/api/product/addCategory`, {
+        name: newCategory.name,
+        MainCategory: newCategory.mainCategory,
+      });
       setCategories([...categories, response.data]);
-      setNewCategory('');
+      setNewCategory({ name: "", mainCategory: "" }); // Очистка полів
       fetchCategories();
     } catch (error) {
-      console.error('Помилка при створенні категорії:', error);
+      console.error("Помилка при створенні категорії:", error);
+    }
+  };
+
+  const handleDeleteMainCategory = async (mainCategoryId) => {
+    if (
+      window.confirm("Ви впевнені, що хочете видалити цю головну категорію?")
+    ) {
+      try {
+        await axios.delete(`${baseUrl}/api/product/delMainCategory`, {
+          params: { mainCategoryId },
+        });
+        setMainCategories(
+          mainCategories.filter(
+            (mainCategory) => mainCategory.main_category_id !== mainCategoryId
+          )
+        );
+        fetchMainCategories();
+      } catch (error) {
+        console.error("Помилка при видаленні головної категорії:", error);
+      }
+    }
+  };
+
+  const handleAddMainCategory = async (e) => {
+    e.preventDefault();
+    if (!newMainCategory.name) return;
+    try {
+      const response = await axios.post(
+        `${baseUrl}/api/product/addMainCategory`,
+        { name: newMainCategory.name }
+      );
+      setMainCategories([...mainCategories, response.data]);
+      setNewMainCategory({ name: "", mainCategory: "" });
+      fetchMainCategories();
+    } catch (error) {
+      console.error("Помилка при створенні головної категорії:", error);
     }
   };
 
@@ -145,37 +225,59 @@ const AdminProducts = () => {
 
       <div className="flex mb-6 space-x-4">
         <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2 ${activeTab === 'products' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setActiveTab("products")}
+          className={`px-4 py-2 ${
+            activeTab === "products" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
         >
           Товари
         </button>
         <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-4 py-2 ${activeTab === 'categories' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setActiveTab("categories")}
+          className={`px-4 py-2 ${
+            activeTab === "categories"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-200"
+          }`}
         >
           Категорії
         </button>
+        <button
+          onClick={() => setActiveTab("mainCategories")}
+          className={`px-4 py-2 ${
+            activeTab === "mainCategories"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-200"
+          }`}
+        >
+          Головні Категорії
+        </button>
       </div>
 
-      {activeTab === 'products' && (
+      {activeTab === "products" && (
         <>
           <form onSubmit={handleAddProduct} className="mb-6 space-y-4">
             <input
               type="text"
               placeholder="Назва товару"
               value={newProduct.name}
-              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, name: e.target.value })
+              }
               className="w-full p-2 border rounded-md"
               required
             />
             <select
               value={newProduct.category}
-              onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, category: e.target.value })
+              }
               className="w-full p-2 border rounded-md"
               required
             >
-              <option value="" disabled>Оберіть категорію</option>
+              <option value="" disabled>
+                Оберіть категорію
+              </option>
               {categories.map((category) => (
                 <option key={category.category_id} value={category.category_id}>
                   {category.name}
@@ -186,7 +288,9 @@ const AdminProducts = () => {
               type="text"
               placeholder="Опис товару"
               value={newProduct.description}
-              onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, description: e.target.value })
+              }
               className="w-full p-2 border rounded-md"
               required
             />
@@ -194,7 +298,9 @@ const AdminProducts = () => {
               type="number"
               placeholder="Ціна"
               value={newProduct.price}
-              onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, price: e.target.value })
+              }
               className="w-full p-2 border rounded-md"
               required
             />
@@ -202,16 +308,35 @@ const AdminProducts = () => {
               type="number"
               placeholder="Кількість на складі"
               value={newProduct.stock}
-              onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, stock: e.target.value })
+              }
               className="w-full p-2 border rounded-md"
               required
             />
+            <select
+              value={newProduct.sex}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, sex: e.target.value })
+              }
+              className="w-full p-2 border rounded-md"
+              required
+            >
+              <option value="" disabled>
+                Оберіть категорію товару
+              </option>
+              <option value="male">Чоловік</option>
+              <option value="female">Жінка</option>
+              <option value="unisex">Унісекс</option>
+            </select>
             <div className="flex items-center space-x-2">
               <input
                 type="text"
                 placeholder="Артикул"
                 value={newProduct.sku}
-                onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                onChange={(e) =>
+                  setNewProduct({ ...newProduct, sku: e.target.value })
+                }
                 className="w-full p-2 border rounded-md"
                 required
               />
@@ -229,93 +354,150 @@ const AdminProducts = () => {
               onChange={handleFileChange}
               className="w-full p-2 border rounded-md"
             />
-            <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded-md">
+            <button
+              type="submit"
+              className="w-full bg-blue-500 text-white p-2 rounded-md"
+            >
               Додати товар
             </button>
           </form>
 
           <h3 className="text-xl font-semibold mb-4">Список товарів</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map(product => (
-              <div key={product.product_id} className="bg-white p-4 rounded-lg shadow-md">
-                <h4 className="text-lg font-medium">{product.name}</h4>
-                <p className="text-sm text-gray-500">{product.description}</p>
-                <p className="mt-2 font-bold">{product.price} грн</p>
-                <p className="text-sm text-gray-400">Кількість на складі: {product.stock}</p>
-
-                <div className="mt-4">
-                  {product.images && product.images.length > 0 ? (
-                    product.images.map((image, index) => (
-                      <img
-                        key={index}
-                        src={image}
-                        alt={`Product ${index + 1}`}
-                        className="w-full h-40 object-cover mb-4 rounded-md"
-                      />
-                    ))
-                  ) : (
-                    <p>Фото відсутнє</p>
-                  )}
-                </div>
-
-                <div className="mt-4 flex space-x-2">
-                  <button
-                    // onClick={() => handleEditProduct(product.product_id)}
-                    className="bg-yellow-500 text-white py-1 px-2 rounded-md"
-                  >
-                    Редагувати
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product.product_id)}
-                    className="bg-red-500 text-white py-1 px-2 rounded-md"
-                  >
-                    Видалити
-                  </button>
-                </div>
+            {products.map((product) => (
+              <div
+                key={product.product_id}
+                className="bg-white p-4 rounded-lg shadow-md"
+              >
+                <h4 className="text-lg font-semibold">{product.name}</h4>
+                <p>{product.description}</p>
+                <p>Ціна: {product.price}</p>
+                <p>Кількість: {product.stock}</p>
+                <button
+                  onClick={() => handleDeleteProduct(product.product_id)}
+                  className="mt-2 bg-red-500 text-white p-2 rounded-md"
+                >
+                  Видалити
+                </button>
               </div>
             ))}
           </div>
         </>
       )}
 
-      {activeTab === 'categories' && (
+      {activeTab === "categories" && (
         <>
-          <form onSubmit={handleAddCategory} className="mb-6 space-y-4">
+          <form onSubmit={handleAddCategory} className="mb-6">
             <input
               type="text"
               placeholder="Назва нової категорії"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
+              value={newCategory.name}
+              onChange={(e) =>
+                setNewCategory((prevState) => ({
+                  ...prevState,
+                  name: e.target.value, // оновлюємо лише поле name
+                }))
+              }
               className="w-full p-2 border rounded-md"
-              required
             />
-            <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded-md">
-              Створити категорію
+            <select
+              value={newMainCategory.mainCategory}
+              onChange={(e) =>
+                setNewCategory({
+                  ...newCategory,
+                  mainCategory: e.target.value,
+                })
+              }
+              className="w-full p-2 border rounded-md"
+            >
+              <option value="" disabled>
+                Оберіть головну категорію
+              </option>
+              {mainCategories.map((mainCategory) => (
+                <option
+                  key={mainCategory.main_category_id}
+                  value={mainCategory.main_category_id}
+                >
+                  {mainCategory.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="mt-4 w-full bg-blue-500 text-white p-2 rounded-md"
+            >
+              Додати категорію
             </button>
           </form>
 
           <h3 className="text-xl font-semibold mb-4">Список категорій</h3>
-          <div className="space-y-4">
-            {categories.map(category => (
-              <div key={category.category_id} className="flex items-center justify-between bg-white p-4 rounded-lg shadow-md">
-                <span>{category.name}</span>
-                <div className="space-x-2">
-                  <button
-                    onClick={() => {
-                      console.log("Передане categoryId:", category.category_id);
-                      handleEditCategory(category.category_id)
-                    }}
-                    className="bg-yellow-500 text-white py-1 px-2 rounded-md"
-                  >
-                    Редагувати
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCategory(category.category_id)}
-                    className="bg-red-500 text-white py-1 px-2 rounded-md"
-                  >
-                    Видалити
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {categories.map((category) => (
+              <div
+                key={category.category_id}
+                className="bg-white p-4 rounded-lg shadow-md"
+              >
+                <h4 className="text-lg font-semibold">{category.name}</h4>
+                <h4 className="text-sm font-sans">
+                  {category.main_category_name}
+                </h4>
+                <button
+                  onClick={() => handleEditCategory(category.category_id)}
+                  className="mt-2 bg-green-500 text-white p-2 rounded-md"
+                >
+                  Редагувати
+                </button>
+                <button
+                  onClick={() => handleDeleteCategory(category.category_id)}
+                  className="mt-2 bg-red-500 text-white p-2 rounded-md"
+                >
+                  Видалити
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === "mainCategories" && (
+        <>
+          <form onSubmit={handleAddMainCategory} className="mb-6">
+            <input
+              type="text"
+              placeholder="Назва головної категорії"
+              value={newMainCategory.name}
+              onChange={(e) =>
+                setNewMainCategory({ ...newMainCategory, name: e.target.value })
+              }
+              className="w-full p-2 border rounded-md"
+              required
+            />
+            <button
+              type="submit"
+              className="mt-4 w-full bg-blue-500 text-white p-2 rounded-md"
+            >
+              Додати головну категорію
+            </button>
+          </form>
+
+          <h3 className="text-xl font-semibold mb-4">
+            Список головних категорій
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {mainCategories.map((mainCategory) => (
+              <div
+                key={mainCategory.main_category_id}
+                className="bg-white p-4 rounded-lg shadow-md"
+              >
+                <h4 className="text-lg font-semibold">{mainCategory.name}</h4>
+                <button
+                  onClick={() =>
+                    handleDeleteMainCategory(mainCategory.main_category_id)
+                  }
+                  className="mt-2 bg-red-500 text-white p-2 rounded-md"
+                >
+                  Видалити
+                </button>
               </div>
             ))}
           </div>

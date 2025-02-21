@@ -9,7 +9,7 @@ const PersonalInfo = ({ userData }) => {
   return (
     <div>
       <h2>Особиста інформація</h2>
-      <p><strong>Ім'я:</strong> {userData.username}</p>
+      <p><strong>Ім'я:</strong> {userData.lastname}  {userData.username}</p>
       <p><strong>Email:</strong> {userData.email}</p>
       <p><strong>Телефон:</strong> {userData.user_number}</p>
     </div>
