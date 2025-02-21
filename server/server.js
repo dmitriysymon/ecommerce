@@ -8,6 +8,7 @@ const regRoutes = require('./routes/regRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const telegramRoutes = require('./routes/telegramRoutes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/register', regRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 
 app._router.stack.forEach((middleware) => {

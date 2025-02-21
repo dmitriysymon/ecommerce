@@ -2,9 +2,9 @@ const pool = require('../config/db'); // Підключаємо базу
 const { hashPassword } = require('../utils/bcrypt');
 
 const reg = async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, lastname, email, phone, password } = req.body;
 
-  if (!email || !password || !name || !phone) {
+  if (!email || !password || !lastname || !name || !phone) {
     return res.status(400).json({ message: "Всі поля обов'язкові" });
   }
 
@@ -16,7 +16,7 @@ const reg = async (req, res) => {
 
     const hashedPassword = await hashPassword(password);
 
-    await pool.execute('INSERT INTO user (username, email, user_number, password) VALUES (?, ?, ?, ?)', [name, email, phone, hashedPassword]);
+    await pool.execute('INSERT INTO user (username, lastname, email, user_number, password) VALUES (?, ?, ?, ?, ?)', [name, lastname, email, phone, hashedPassword]);
 
     res.status(201).json({ message: 'Користувача успішно зареєстровано' });
 

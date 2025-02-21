@@ -5,15 +5,15 @@ exports.addProduct = async (req, res) => {
   console.log('Запит на додавання товару отримано');
   try {
     // Отримуємо дані товару з req.body
-    const { name, description, price, stock, sku, category } = req.body;
+    const { name, description, price, stock, sku, sex, category } = req.body;
 
-    console.log('Отримані дані товару:', { name, description, price, stock, sku, category});
+    console.log('Отримані дані товару:', { name, description, price, stock, sku, sex, category});
 
     // Вставляємо товар у таблицю products
     const [result] = await pool.execute(
-      `INSERT INTO product (name, description, price, stock, sku, category_id) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, description, price, stock, sku, category]
+      `INSERT INTO product (name, description, price, stock, sku, sex, category_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, price, stock, sku, sex, category]
     );
 
     const productId = result.insertId; // Отримуємо id нового товару
