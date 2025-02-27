@@ -9,6 +9,7 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const telegramRoutes = require('./routes/telegramRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
@@ -16,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'http://192.168.31.115:5173',
   credentials: true,
 }));
 app.use(sessionConfig);
@@ -30,6 +31,7 @@ app.use('/api/register', regRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/order',orderRoutes);
 
 
 app._router.stack.forEach((middleware) => {
@@ -46,6 +48,6 @@ app._router.stack.forEach((middleware) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '192.168.31.115', () => {
   console.log(`Сервер запущено на порту ${PORT}`);
 });

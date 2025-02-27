@@ -5,11 +5,13 @@ import { useBaseUrl } from "../context/BaseUrlContext";
 import { useLocation } from "react-router-dom";
 import Select from "react-select";
 import debounce from "lodash.debounce"; // Імпорт дебаунсінгу
+import { useCart } from "../context/CartContext";
 
 export const CheckoutPage = () => {
   const baseUrl = useBaseUrl();
   const { state } = useLocation();
   const apiKey = "4308a61be59b3baa8155882c7baad178"; // Замініть на свій ключ API Нової Пошти
+  const { fetchCartItemCount, loadLocalCartCount } = useCart();
 
   const { cities, warehouses, setSelectedCityRef } = useNovaPoshta(apiKey);
 
@@ -21,7 +23,6 @@ export const CheckoutPage = () => {
     lastname: "",
     phone: "",
     email: "",
-    address: "",
     novaPoshtaBranch: "",
   });
   const [cityInput, setCityInput] = useState(""); // Додано для введення міста
@@ -64,8 +65,7 @@ export const CheckoutPage = () => {
       const response1 = await axios.get(
         `${baseUrl}/api/cart/getTotalPrice/${userData.user_id}`
       );
-      setTotalPrice(response1.data.totalPrice)
-
+      setTotalPrice(response1.data.totalPrice);
     } catch (error) {
       console.error("Помилка при отриманні товарів", error);
     }
@@ -94,18 +94,31 @@ export const CheckoutPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      const response = await axios.post(`${baseUrl}/api/telegram/send-order`, {
-        ...orderData,
-        cartItems,
-        totalPrice,
+      const response = await axios.post(`${baseUrl}/api/order/createOrder`, {
+        user_id: userData.user_id,
+        cartItems: cartItems,
+        totalPrice: totalPrice,
+        phone: orderData.phone,
       });
-  
-      if (response.data.success) {
+      const responseTg = await axios.post(
+        `${baseUrl}/api/telegram/send-order`,
+        {
+          ...orderData,
+          cartItems,
+          totalPrice,
+        }
+      );
+
+      if (responseTg.data.success && response.data.success) {
         alert("Замовлення успішно відправлено!");
       } else {
         alert("Помилка під час відправки замовлення.");
       }
+
+      axios.post(`${baseUrl}/api/cart/clearCart/${userData.user_id}`);
+      fetchCartItemCount(userData.user_id);
     } catch (error) {
       console.error("Помилка:", error);
       alert("Не вдалося відправити замовлення.");
@@ -120,16 +133,22 @@ export const CheckoutPage = () => {
       )
       // Сортуємо за найбільшою схожістю до введеного тексту
       .sort((a, b) => {
-        const similarityA = a.Description.toLowerCase().indexOf(cityInput.toLowerCase());
-        const similarityB = b.Description.toLowerCase().indexOf(cityInput.toLowerCase());
+        const similarityA = a.Description.toLowerCase().indexOf(
+          cityInput.toLowerCase()
+        );
+        const similarityB = b.Description.toLowerCase().indexOf(
+          cityInput.toLowerCase()
+        );
         return similarityA - similarityB; // Міста, що більше схожі, з'являться першими
       });
 
     // Обмежуємо до 50 елементів
-    setCityOptions(filteredCities.slice(0, 50).map((city) => ({
-      value: city.Ref,
-      label: city.Description,
-    })));
+    setCityOptions(
+      filteredCities.slice(0, 50).map((city) => ({
+        value: city.Ref,
+        label: city.Description,
+      }))
+    );
   }, [cityInput, cities]);
 
   const warehouseOptions = warehouses.map((warehouse) => ({
@@ -182,32 +201,48 @@ export const CheckoutPage = () => {
           name="city"
           options={cityOptions}
           onInputChange={handleCityInputChange} // Викликаємо метод для обробки введеного тексту
-          onChange={(selectedOption) => setSelectedCityRef(selectedOption.value)}
+          onChange={(selectedOption) =>
+            setSelectedCityRef(selectedOption.value)
+          }
           required
           placeholder="Оберіть місто"
           className="mb-3"
           menuPortalTarget={document.body} // Рендеринг меню поза компонентом
-          menuPosition="fixed" // Фіксоване меню
+          menuPosition="absolute" // Фіксоване меню
+          menuPlacement="bottom"
         />
 
         {/* Вибір відділення */}
         <Select
           name="novaPoshtaBranch"
           options={warehouseOptions}
-          value={warehouseOptions.find(option => option.value === orderData.novaPoshtaBranch)}
-          onChange={(selectedOption) => setOrderData({ ...orderData, novaPoshtaBranch: selectedOption.value })}
+          value={warehouseOptions.find(
+            (option) => option.value === orderData.novaPoshtaBranch
+          )}
+          onChange={(selectedOption) =>
+            setOrderData({
+              ...orderData,
+              novaPoshtaBranch: selectedOption.value,
+            })
+          }
           required
           placeholder="Оберіть відділення"
           className="mb-3"
           menuPortalTarget={document.body} // Рендеринг меню поза компонентом
-          menuPosition="fixed" // Фіксоване меню
+          menuPosition="absolute" // Фіксоване меню
+          menuPlacement="bottom"
         />
 
         <h3 className="text-xl font-semibold mb-3">Ваше замовлення</h3>
         {cartItems.map((item, index) => (
           <div key={index} className="flex justify-between p-2 border-b">
             <span>
-              {item.product_name} (x{item.quantity})
+              <img
+                src={item.image_url}
+                alt={item.name}
+                className="w-12 h-12 object-cover mr-4"
+              />
+              {item.name} (x{item.quantity})
             </span>
             <span>₴{item.price * item.quantity}</span>
           </div>

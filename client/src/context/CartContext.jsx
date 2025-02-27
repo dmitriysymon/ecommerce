@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 
+
 // Створення контексту
 const CartContext = createContext();
 
@@ -17,7 +18,7 @@ export const CartProvider = ({ children }) => {
   const fetchCartItemCount = async (userId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/cart/getCartItemCount/${userId}`,
+        `http://192.168.31.115:5000/api/cart/getCartItemCount/${userId}`,
         {
           method: "GET",
           credentials: "include",

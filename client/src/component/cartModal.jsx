@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import deleteIcon from "../res/icons/delete.png";
 import { useBaseUrl } from "../context/BaseUrlContext";
 import { Link } from "react-router-dom";
+import { FiX } from "react-icons/fi"; // Імпортуємо іконку хрестика
 
 const CartModal = ({ isOpen, closeCart }) => {
   const baseUrl = useBaseUrl();
@@ -16,7 +17,6 @@ const CartModal = ({ isOpen, closeCart }) => {
   const { fetchCartItemCount, loadLocalCartCount } = useCart();
 
   // Функція для отримання даних користувача
-
   useEffect(() => {
     if (isOpen) {
       const fetchUser = async () => {
@@ -129,7 +129,12 @@ const CartModal = ({ isOpen, closeCart }) => {
   return (
     isOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white p-6 rounded-lg w-96">
+        <div className="bg-white p-6 rounded-lg w-96 relative">
+          <FiX
+            onClick={closeCart} // Закриття картки при натисканні на хрестик
+            size={24}
+            className="absolute top-2 right-2 cursor-pointer text-gray-500 hover:text-gray-700"
+          />
           <h2 className="text-2xl font-semibold mb-4">Кошик</h2>
 
           {userData === null ? (
@@ -188,11 +193,11 @@ const CartModal = ({ isOpen, closeCart }) => {
                       <div className="flex items-center">
                         <img
                           src={item.image_url}
-                          alt={item.product_name}
+                          alt={item.name}
                           className="w-12 h-12 object-cover mr-4"
                         />
                         <div>
-                          <p>{item.product_name}</p>
+                          <p>{item.name}</p>
                           <p className="text-gray-600">Ціна: ₴{item.price}</p>
                         </div>
                       </div>
@@ -249,14 +254,6 @@ const CartModal = ({ isOpen, closeCart }) => {
             </div>
           )}
 
-          <div className="flex justify-end mt-6">
-            <button
-              onClick={closeCart}
-              className="px-6 py-2 bg-gray-500 text-white rounded-lg"
-            >
-              Закрити
-            </button>
-          </div>
         </div>
       </div>
     )

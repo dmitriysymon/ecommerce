@@ -8,7 +8,7 @@ const Banner = () => {
           draggable="false"
           src="https://static.housebrand.com/media/SHARED/stronywizerunkowe/house/homepage-new/images/slider/D/UA-d-home-promo-20250218.jpg"
           alt="Banner"
-          className="min-w-[600px] md:min-w-[1000px] lg:min-w-[1440px] max-w-full h-auto object-cover"
+          className="min-w-[600px] md:min-w-[1000px] lg:min-w-[2000px] max-w-full h-auto object-cover"
         />
       </div>
     </section>

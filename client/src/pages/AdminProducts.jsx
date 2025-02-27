@@ -162,6 +162,7 @@ const AdminProducts = () => {
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
+
     if (!newCategory.name || !newCategory.mainCategory) {
       console.log(
         "отримані дані: ",
@@ -169,14 +170,21 @@ const AdminProducts = () => {
         newCategory.mainCategory
       );
       return;
-    } // Перевірка на наявність даних
+    }
+
     try {
       const response = await axios.post(`${baseUrl}/api/product/addCategory`, {
         name: newCategory.name,
         MainCategory: newCategory.mainCategory,
       });
-      setCategories([...categories, response.data]);
-      setNewCategory({ name: "", mainCategory: "" }); // Очистка полів
+
+      // Оновлюємо список категорій
+      setCategories((prevCategories) => [...prevCategories, response.data]);
+
+      // Очищаємо `newCategory`
+      setNewCategory({ name: "" });
+
+      // Додатково викликаємо fetchCategories для гарантованого оновлення
       fetchCategories();
     } catch (error) {
       console.error("Помилка при створенні категорії:", error);

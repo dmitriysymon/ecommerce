@@ -23,7 +23,7 @@ const getProducts = async (req, res) => {
       if (!imageMap[img.product_id]) {
         imageMap[img.product_id] = [];
       }
-      imageMap[img.product_id].push(`http://localhost:5000${img.image_url}`);
+      imageMap[img.product_id].push(`http://192.168.31.115:5000${img.image_url}`);
     });
 
     // Додаємо масив фото до кожного товару

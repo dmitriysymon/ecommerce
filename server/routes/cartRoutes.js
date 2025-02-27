@@ -15,4 +15,6 @@ router.get('/getTotalPrice/:user_id', cartController.getTotalPrice);
 
 router.get('/getCartItemCount/:user_id', cartController.getCartItemCount);
 
+router.post('/clearCart/:user_id', cartController.clearCart);
+
 module.exports = router;

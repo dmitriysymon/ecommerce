@@ -44,12 +44,7 @@ router.delete(
 );
 
 router.get(
-  "/listProduct",
-  (req, res, next) => {
-    console.log("Запит на отримання списку товарів");
-    next();
-  },
-  productListController.getProducts
+  "/listProduct", productListController.getProducts
 );
 
 

@@ -52,7 +52,7 @@ const ModalAuth = ({ isOpen, setIsOpen, switchToReg }) => {
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="bg-white p-6 rounded-2xl shadow-lg max-w-sm w-full relative"
+            className="bg-white bg-opacity-100 p-6 rounded-2xl shadow-lg max-w-sm w-full relative"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}

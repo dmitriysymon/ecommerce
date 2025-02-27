@@ -69,7 +69,7 @@ const NewArrivals = () => {
   };
 
   return (
-    <section className="relative w-full mx-auto py-8">
+    <section className="font-montserrat relative w-full mx-auto py-8">
       <h2 className="text-3xl font-semibold mb-6 text-center">Новинки</h2>
 
       {/* Контейнер товарів */}
@@ -103,8 +103,8 @@ const NewArrivals = () => {
                   className="w-full h-full object-contain"
                 />
                 <div className="p-2 sm:p-4">
-                  <p className="text-lg font-semibold">{product.name}</p>
-                  <p className="text-gray-500">{product.price} грн</p>
+                  <p className="text-lg text-gray-800">{product.name}</p>
+                  <p className="text-gray-800 font-medium">{product.price} UAH</p>
                 </div>
               </div>
             </div>

@@ -1,9 +1,12 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import axios from "axios";
-import { toast } from 'react-custom-alert';
+import { toast } from "react-custom-alert";
 import { useCart } from "../context/CartContext";
 import { useBaseUrl } from "../context/BaseUrlContext";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import arrow_l from "../assets/arrow_l.svg";
+import arrow_r from "../assets/arrow_r.svg";
 
 const ProductPage = () => {
   const baseUrl = useBaseUrl();
@@ -18,6 +21,32 @@ const ProductPage = () => {
 
   const [currentImage, setCurrentImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [hovered, setHovered] = useState(false);
+  const [maxSize, setMaxSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const loadImageSizes = async () => {
+      let maxWidth = 0;
+      let maxHeight = 0;
+
+      const promises = product.images.map((src) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.src = src;
+          img.onload = () => {
+            if (img.width > maxWidth) maxWidth = img.width;
+            if (img.height > maxHeight) maxHeight = img.height;
+            resolve();
+          };
+        });
+      });
+
+      await Promise.all(promises);
+      setMaxSize({ width: maxWidth, height: maxHeight });
+    };
+
+    loadImageSizes();
+  }, [product.images]);
 
   const handleQuantityChange = (amount) => {
     setQuantity((prev) => Math.max(1, prev + amount));
@@ -29,15 +58,13 @@ const ProductPage = () => {
         method: "GET",
         credentials: "include",
       });
-  
+
       if (response.ok) {
         const data = await response.json();
         const user_id = data.userData?.user_id;
-  
+
         if (user_id) {
-          // Якщо користувач авторизований, додаємо товар в БД
           const image_url = product.images[0];
-          console.log('Шлях до фото', image_url)
           await axios.post(`${baseUrl}/api/cart/addToCart`, {
             product_id: product.product_id,
             quantity,
@@ -57,13 +84,14 @@ const ProductPage = () => {
       addToLocalCart(product, quantity);
     }
   };
-  
-  // Функція для додавання товару в localStorage
+
   const addToLocalCart = (product, quantity) => {
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
-  
-    const existingItem = cart.find((item) => item.product_id === product.product_id);
-    
+
+    const existingItem = cart.find(
+      (item) => item.product_id === product.product_id
+    );
+
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
@@ -76,36 +104,79 @@ const ProductPage = () => {
     toast.success("Товар додано до кошика (локально)!");
   };
 
+  const handlePrevImage = () => {
+    setCurrentImage((prev) =>
+      prev === 0 ? product.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImage((prev) =>
+      prev === product.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
   return (
-    <div className="container mx-auto p-6 mt-20 max-w-6xl">
+    <div className="font-montserrat tracking-wide container mx-auto p-6 mt-20 max-w-6xl">
       <div className="grid md:grid-cols-2 gap-12 items-start">
         {/* Галерея фото */}
-        <div className="relative flex flex-col items-center">
-          <div className="w-full max-w-lg">
-            <img
-              src={product.images[currentImage]}
-              alt={product.name}
-              className="w-full h-96 object-cover rounded-lg shadow-lg"
-            />
-          </div>
-          <div className="flex space-x-2 mt-4">
+        <div className="relative flex items-center">
+          {/* Список мініатюр фото */}
+          <div className="flex flex-col space-y-2">
             {product.images.map((img, index) => (
               <img
+                draggable={false}
                 key={index}
                 src={img}
                 alt="thumb"
-                className={`w-16 h-16 object-cover rounded cursor-pointer border-2 ${
-                  currentImage === index ? "border-black" : "border-gray-300"
+                className={`w-20 h-20 object-cover rounded-sm cursor-pointer border-b-2 ${
+                  currentImage === index ? "border-black" : "border-none"
                 }`}
                 onClick={() => setCurrentImage(index)}
               />
             ))}
           </div>
+
+          {/* Головне фото */}
+          <div
+            className="relative ml-4"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          >
+            <img
+              draggable={false}
+              src={product.images[currentImage]}
+              alt={product.name}
+              className="w-[450px] h-[600px] object-cover rounded-lg shadow-lg"
+            />
+
+            {/* Стрілки для навігації */}
+            {hovered && (
+              <>
+                <div className="absolute top-1/2 left-0 transform -translate-y-1/2 px-3 z-5 hidden sm:block">
+                  <button onClick={handlePrevImage} className="bg-transparent">
+                    <img
+                      draggable="false"
+                      src={arrow_l}
+                      alt="left-pointer"
+                      className="w-6 h-6 sm:w-8 sm:h-8 opacity-50 hover:opacity-100 transition-opacity duration-300"
+                    />
+                  </button>
+                </div>
+                <button
+                  onClick={handleNextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Інформація про товар */}
         <div className="space-y-6">
-          <h1 className="text-4xl font-bold">{product.name}</h1>
+          <h1 className="text-4xl font">{product.name}</h1>
           <p className="text-gray-600 leading-relaxed">{product.description}</p>
           <p className="text-gray-600 leading-relaxed">
             {product.category_name}
@@ -129,8 +200,8 @@ const ProductPage = () => {
                 +
               </button>
             </div>
-            <p className="flex-1 text-center mr-28 text-2xl text-gray-700 font-semibold">
-              ₴{(product.price * quantity).toFixed(2)}
+            <p className="flex-1 text-center mr-28 text-2xl text-black font-medium">
+              {product.price} UAH
             </p>
           </div>
 
@@ -139,7 +210,7 @@ const ProductPage = () => {
             onClick={handleAddToCart}
             className="w-full py-3 bg-black text-white text-lg rounded-lg hover:bg-gray-800 transition"
           >
-            Купити
+            Додати ₴{(product.price * quantity).toFixed(2)}
           </button>
         </div>
       </div>
