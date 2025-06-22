@@ -137,7 +137,7 @@ const UserProfile = () => {
   if (error) return <p className="text-red-500">Помилка: {error}</p>;
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="font-montserrat container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Особистий кабінет</h1>
       <Tabs>
         <div className="flex gap-6">

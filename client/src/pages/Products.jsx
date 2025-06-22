@@ -1,217 +1,264 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import { useBaseUrl } from "../context/BaseUrlContext";
+import SidebarFilters from "../component/SidebarFilters";
+import { getAvailableFilters } from "../utils/productFilters.js";
 
 const Products = () => {
   const baseUrl = useBaseUrl();
-  const { category } = useParams();
-  const openCategory = category ? decodeURIComponent(category) : "";
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [sortOption, setSortOption] = useState("priceAsc");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
+
+  const [sortOption, setSortOption] = useState("");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
-  const navigate = useNavigate();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSidebarFixed, setIsSidebarFixed] = useState(false);
 
-  useEffect(() => {
-    if (openCategory !== undefined && openCategory !== null) {
-      setSelectedCategory(openCategory);
-    } else {
-      setSelectedCategory("");
-    }
-  }, [openCategory]);
+  const [selectedSex, setSelectedSex] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedSizes, setSelectedSizes] = useState([]);
+  const [selectedColors, setSelectedColors] = useState([]);
+  const [priceMin, setPriceMin] = useState(null);
+  const [priceMax, setPriceMax] = useState(null);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(
-          `${baseUrl}/api/product/getCategoriesMenu`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data);
-        }
-      } catch (error) {
-        console.error("Помилка при завантаженні категорій:", error);
-      }
-    };
-
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get(`${baseUrl}/api/product/listProduct`);
-        setProducts(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Помилка завантаження продуктів:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-    fetchProducts();
-  }, [selectedCategory]);
-
-  const sortedProducts = [...products].sort((a, b) =>
-    sortOption === "priceAsc" ? a.price - b.price : b.price - a.price
-  );
-
-  const filteredProducts = sortedProducts.filter((product) => {
-    if (selectedCategory === "" || selectedCategory === "Усі") {
-      return true;
-    }
-
-    const isSubCategory = categories.some((mainCategory) =>
-      mainCategory.categories.some(
-        (sub) =>
-          sub.name === selectedCategory && sub.name === product.category_name
-      )
-    );
-
-    const isMainCategory = categories.some(
-      (mainCategory) =>
-        mainCategory.main_category === selectedCategory &&
-        mainCategory.categories.some(
-          (sub) => sub.name === product.category_name
-        )
-    );
-
-    return isSubCategory || isMainCategory;
+  const [availableFilters, setAvailableFilters] = useState({
+    sizes: [],
+    colors: [],
+    priceRange: [0, 0],
   });
 
-  const handleCategoryClick = (categoryName) => {
-    setSelectedCategory(categoryName);
-    navigate(`/products/${encodeURIComponent(categoryName)}`);
+  useEffect(() => {
+  const fetchEverything = async () => {
+    setLoading(true);
+
+    // 1️⃣ Оновити фільтри з URL
+    const newSex = queryParams.get("sex") || "";
+    const newCategories = queryParams.get("categories")?.split(",") || [];
+    const newSizes = parseQueryArray(queryParams.getAll("sizes"));
+    const newColors = parseQueryArray(queryParams.getAll("colors"));
+    const newMinPrice = queryParams.get("min_price") || null;
+    const newMaxPrice = queryParams.get("max_price") || null;
+
+    setSelectedSex(newSex);
+    setSelectedCategories(newCategories);
+    setSelectedSizes(newSizes);
+    setSelectedColors(newColors);
+    setPriceMin(newMinPrice);
+    setPriceMax(newMaxPrice);
+
+    try {
+      // 2️⃣ Отримати категорії
+      const categoriesRes = await fetch(`${baseUrl}/api/product/getCategoriesMenu`);
+      if (categoriesRes.ok) {
+        const data = await categoriesRes.json();
+        setCategories(data);
+      }
+
+      // 3️⃣ Отримати продукти
+      const productsRes = await axios.get(`${baseUrl}/api/product/listProduct`, {
+        params: {
+          sex: newSex,
+          category: newCategories?.[0],
+          color: newColors,
+          size: newSizes,
+          min_price: newMinPrice,
+          max_price: newMaxPrice,
+        },
+      });
+
+      setProducts(productsRes.data);
+      setAvailableFilters(getAvailableFilters(productsRes.data));
+    } catch (error) {
+      console.error("Помилка при завантаженні:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchEverything();
+}, [location.search]);
+
+
+  const sortedProducts = useMemo(() => {
+    if (sortOption === "priceAsc")
+      return [...products].sort((a, b) => a.price - b.price);
+    if (sortOption === "priceDesc")
+      return [...products].sort((a, b) => b.price - a.price);
+    return products;
+  }, [products, sortOption]);
+
+  const getSexDisplayName = (sex) => {
+    switch (sex) {
+      case "male":
+        return "Чоловік";
+      case "female":
+        return "Жінка";
+      case "kids":
+        return "Діти";
+      default:
+        return "Усі";
+    }
+  };
+
+  const parseQueryArray = (param) => {
+    if (!param) return [];
+    if (Array.isArray(param)) {
+      return param.flatMap((item) =>
+        item
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      );
+    }
+    return param
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   };
 
   const generateBreadcrumbs = () => {
-    let breadcrumbs = ["Головна", "Товари"];
-    if (selectedCategory) {
-      breadcrumbs.push(selectedCategory);
+    const breadcrumbs = [{ label: "НОВИНКА", path: "/" }];
+
+    if (selectedSex) {
+      breadcrumbs.push({
+        label: getSexDisplayName(selectedSex),
+        path: `/products?sex=${getSexDisplayName(selectedSex)}`,
+      });
     }
-    return breadcrumbs.map((crumb, index) => {
-      if (index < breadcrumbs.length - 1) {
-        return (
-          <span key={index}>
-            <Link
-              to={
-                index === 0
-                  ? "/"
-                  : `/products/${encodeURIComponent(selectedCategory)}`
-              }
-            >
-              {crumb}
-            </Link>{" "}
-            /{" "}
-          </span>
+
+    if (selectedCategories.length > 0) {
+      const mainCategory = categories.find(
+        (main) =>
+          main.main_category === selectedCategories[0] ||
+          main.categories.some((sub) => sub.name === selectedCategories[0])
+      );
+
+      if (mainCategory) {
+        breadcrumbs.push({ label: mainCategory.main_category + ` / ` });
+        const subCategory = mainCategory.categories.find(
+          (cat) => cat.name === selectedCategories[0]
         );
-      } else {
-        return <span key={index}>{crumb}</span>;
+        if (subCategory) breadcrumbs.push({ label: subCategory.name });
       }
-    });
+    }
+
+    return breadcrumbs.map((crumb, index) =>
+      crumb.path ? (
+        <span key={index}>
+          <Link to={crumb.path}>{crumb.label}</Link> /{" "}
+        </span>
+      ) : (
+        <span key={index}>{crumb.label}</span>
+      )
+    );
   };
 
   if (loading) return <div>Завантаження...</div>;
 
   return (
-    <section className="font-montserrat tracking-wider max-w-screen-2xl left-0 py-20 px-4 sm:px-6 md:px-8">
-      {/* 🔥 Хлібні крихти */}
-      <div className="mb-4 text-lg text-gray-600">{generateBreadcrumbs()}</div>
+    <section className="font-montserrat tracking-tight py-20 px-4 sm:px-6 md:px-8">
+      <div className="hidden sm:block mb-4 text-lg text-left text-gray-600">
+        {generateBreadcrumbs()}
+      </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* 🔥 Фільтр категорій */}
-        <div className="w-full lg:w-1/4 bg-gray-100 p-6 rounded-lg shadow-md mb-8 lg:mb-0">
-          <h3 className="text-xl font-semibold mb-4">Фільтри</h3>
-          <button
-            className={`w-full text-base text-left font-semibold py-2 ${
-              selectedCategory === "" ? "text-blue-600" : "text-black"
-            }`}
-            onClick={() => handleCategoryClick("")}
-          >
-            Усі товари
-          </button>
-          <div className="space-y-2">
-            {categories.map((mainCategory) => (
-              <div key={mainCategory.main_category}>
-                {/* 🔥 Головна категорія */}
-                <button
-                  className={`w-full text-base text-left font-semibold py-2 ${
-                    selectedCategory === mainCategory.main_category
-                      ? "text-blue-600"
-                      : "text-black"
-                  }`}
-                  onClick={() =>
-                    handleCategoryClick(mainCategory.main_category)
-                  }
-                >
-                  {mainCategory.main_category}
-                </button>
+      <div className="lg:hidden sticky left-0 right-0 z-30 bg-white px-4 py-2 shadow flex justify-between items-center">
+        <button
+          className="text-black border border-gray-300 px-4 py-2"
+          onClick={() => setIsFilterOpen(true)}
+        >
+          Категорії
+        </button>
+        <select
+          className="ml-2 px-4 py-2 border border-gray-300 rounded-sm"
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+        >
+          <option value="" disabled>
+            Сортування
+          </option>
+          <option value="priceAsc">Ціна ↑</option>
+          <option value="priceDesc">Ціна ↓</option>
+        </select>
+      </div>
 
-                {/* 🔥 Підкатегорії */}
-                {mainCategory.categories.map((category) => (
-                  <div key={category.category_id} className="pl-4">
-                    <button
-                      className={`text-sm block w-full text-left px-4 py-1 ${
-                        selectedCategory === category.name
-                          ? "text-blue-600 font-semibold"
-                          : "text-black"
-                      }`}
-                      onClick={() => handleCategoryClick(category.name)}
-                    >
-                      {category.name}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-col lg:flex-row gap-8 mt-5">
+        <SidebarFilters
+          categories={categories}
+          selectedCategories={selectedCategories}
+          setSelectedCategories={setSelectedCategories}
+          selectedSizes={selectedSizes}
+          setSelectedSizes={setSelectedSizes}
+          selectedColors={selectedColors}
+          setSelectedColors={setSelectedColors}
+          availableFilters={availableFilters}
+          setIsFilterOpen={setIsFilterOpen}
+          location={location}
+          navigate={navigate}
+          selectedSex={selectedSex}
+          isFilterOpen={isFilterOpen}
+          isSidebarFixed={isSidebarFixed}
+        />
 
-        {/* 🔥 Сітка товарів */}
         <div className="w-full lg:w-3/4">
-          {/* 🔥 Сортування */}
-          <div className="flex items-center mb-6 space-x-4">
-            <div className="text-lg font-semibold">Сортування:</div>
+          <div className="hidden lg:flex items-center mb-6 space-x-4">
             <select
               className="px-4 py-2 border border-gray-300 rounded-sm"
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value)}
             >
+              <option value="" disabled>
+                Сортування
+              </option>
               <option value="priceAsc">Ціна (за зростанням)</option>
               <option value="priceDesc">Ціна (за спаданням)</option>
             </select>
           </div>
 
-          {/* 🔥 Список товарів */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {sortedProducts.length > 0 ? (
+              sortedProducts.map((product) => (
                 <div
                   key={product.product_id}
-                  className="bg-white p-4 rounded-lg cursor-pointer"
-                  onClick={() =>
-                    navigate(`/product/${product.product_id}`, {
+                  className="cursor-pointer border border-gray-100 hover:shadow-md"
+                  onClick={() => {
+                    const selectedColor =
+                      product.color ?? product.colors?.[0] ?? null;
+                    const colorSlug = selectedColor
+                      ? encodeURIComponent(selectedColor)
+                      : "";
+                    navigate(`/product/${product.product_id}/${colorSlug}`, {
                       state: { product },
-                    })
-                  }
+                    });
+                  }}
                 >
-                  {product.images && product.images.length > 0 ? (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-48 object-cover mb-4"
-                    />
+                  {product.images?.[0] ? (
+                    <div className="w-full aspect-[4/5] overflow-hidden mb-4 bg-white">
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-48 flex justify-center items-center text-gray-500 mb-4">
                       Фото відсутнє
                     </div>
                   )}
-                  <p className="">{product.name}</p>
-                  <p className="text-black font-semibold">{product.price} грн</p>
+                  <p>{product.name}</p>
+                  <p className="text-black font-semibold mb-4">
+                    {product.price} грн
+                  </p>
                 </div>
               ))
             ) : (
-              <div className="text-center text-gray-500 col-span-4">
+              <div className="text-center text-gray-500 col-span-full">
                 Товари не знайдені
               </div>
             )}

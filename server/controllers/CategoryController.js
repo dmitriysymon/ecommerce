@@ -199,49 +199,111 @@ exports.getAllMainCategories = async (req, res) => {
   }
 };
 
-
 exports.getCategoriesMenu = async (req, res) => {
   try {
-      // Отримуємо всі головні категорії
-      const [mainCategories] = await pool.execute(
-          "SELECT main_category_id, name FROM main_category"
+    // Отримуємо всі головні категорії
+    const [mainCategories] = await pool.execute(
+      "SELECT main_category_id, name FROM main_category"
+    );
+
+    // Якщо немає головних категорій
+    if (mainCategories.length === 0) {
+      return res.status(404).json({ message: "Головні категорії не знайдено" });
+    }
+
+    // Масив для збереження категорій для кожної головної категорії
+    const categoriesByMainCategory = [];
+
+    // Проходимо по всіх головних категоріях і шукаємо їх підкатегорії
+    for (const mainCategory of mainCategories) {
+      // Отримуємо підкатегорії для кожної головної категорії
+      const [subCategories] = await pool.execute(
+        "SELECT category_id, name FROM category WHERE main_category_id = ?",
+        [mainCategory.main_category_id]
       );
 
-      // Якщо немає головних категорій
-      if (mainCategories.length === 0) {
-          return res.status(404).json({ message: "Головні категорії не знайдено" });
-      }
+      // Додаємо підкатегорії до списку
+      categoriesByMainCategory.push({
+        main_category: mainCategory.name,
+        categories: subCategories,
+      });
 
-      // Масив для збереження категорій для кожної головної категорії
-      const categoriesByMainCategory = [];
+      // Встановлюємо заголовок для кожної головної категорії (без недопустимих символів)
+      const headerName = `Main-Category-${mainCategory.main_category_id}`;
+      const headerValue = encodeURIComponent(mainCategory.name); // кодуємо назву категорії для безпечного використання в заголовку
+      res.setHeader(headerName, headerValue);
+    }
 
-      // Проходимо по всіх головних категоріях і шукаємо їх підкатегорії
-      for (const mainCategory of mainCategories) {
-          // Отримуємо підкатегорії для кожної головної категорії
-          const [subCategories] = await pool.execute(
-              "SELECT category_id, name FROM category WHERE main_category_id = ?",
-              [mainCategory.main_category_id]
-          );
-
-          // Додаємо підкатегорії до списку
-          categoriesByMainCategory.push({
-              main_category: mainCategory.name,
-              categories: subCategories
-          });
-
-          // Встановлюємо заголовок для кожної головної категорії (без недопустимих символів)
-          const headerName = `Main-Category-${mainCategory.main_category_id}`;
-          const headerValue = encodeURIComponent(mainCategory.name); // кодуємо назву категорії для безпечного використання в заголовку
-          res.setHeader(headerName, headerValue);
-      }
-
-      // Відправляємо відповідь
-      res.json(categoriesByMainCategory);
-
+    // Відправляємо відповідь
+    res.json(categoriesByMainCategory);
   } catch (error) {
-      console.error("Помилка при отриманні категорій:", error);
-      res.status(500).json({ message: "Виникла помилка на сервері" });
+    console.error("Помилка при отриманні категорій:", error);
+    res.status(500).json({ message: "Виникла помилка на сервері" });
   }
 };
 
+exports.getCategoriesBySex = async (req, res) => {
+  try {
+    const [sexFilter] = req.query.sex ? [req.query.sex] : ["unisex"];
 
+    // Перевірка допустимого значення
+    if (!["male", "female", "unisex", "kids"].includes(sexFilter)) {
+      return res.status(400).json({ message: "Недопустиме значення статі" });
+    }
+
+    // Формуємо відповідну умову
+    let whereClause = "";
+    let params = [];
+
+    if (sexFilter === "male" || sexFilter === "female") {
+      whereClause = '(p.sex = ? OR p.sex = "unisex")';
+      params.push(sexFilter);
+    } else {
+      // 'kids' або 'unisex' — тільки точна відповідність
+      whereClause = "p.sex = ?";
+      params.push(sexFilter);
+    }
+
+    // Запит
+    const [categories] = await pool.execute(
+      `
+      SELECT DISTINCT 
+        mc.main_category_id,
+        mc.name AS main_category,
+        c.category_id,
+        c.name AS category_name
+      FROM product p
+      JOIN category c ON p.category_id = c.category_id
+      JOIN main_category mc ON c.main_category_id = mc.main_category_id
+      WHERE ${whereClause}
+      ORDER BY mc.main_category_id, c.category_id
+      `,
+      params
+    );
+
+    if (categories.length === 0) {
+      return res.status(404).json({ message: "Категорії не знайдено" });
+    }
+
+    // Групування результатів по головній категорії
+    const grouped = {};
+    categories.forEach((row) => {
+      if (!grouped[row.main_category]) {
+        grouped[row.main_category] = {
+          main_category: row.main_category,
+          categories: [],
+        };
+      }
+      grouped[row.main_category].categories.push({
+        category_id: row.category_id,
+        name: row.category_name,
+      });
+    });
+
+    const result = Object.values(grouped);
+    res.json(result);
+  } catch (error) {
+    console.error("Помилка при отриманні категорій за статтю:", error);
+    res.status(500).json({ message: "Внутрішня помилка сервера" });
+  }
+};

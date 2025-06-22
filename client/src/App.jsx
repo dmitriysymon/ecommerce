@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import Header from "./component/Header";
 import Banner from "./component/banner";
+import Banner2 from "./component/banner2";
 import Footer from "./component/Footer";
 import NewArrivals from "./component/NewArrivals";
 import Products from "./pages/Products";
@@ -16,11 +17,14 @@ import ModalCart from "./component/cartModal";
 import AdminProducts from "./pages/AdminProducts";
 import Profile from "./pages/Profile";
 import ProductPage from "./pages/ProductPage";
+import AdminProductsPage from "./pages/AdminProductsPage.jsx";
 import { ToastContainer, toast } from "react-custom-alert";
 import "react-custom-alert/dist/index.css";
 import { CartProvider } from "./context/CartContext.jsx";
 import { BaseUrlProvider } from "./context/BaseUrlContext";
 import { CheckoutPage } from "./component/orderForm";
+import TopSellers from "./component/TopSellers";
+import 'rc-slider/assets/index.css';
 
 const App = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -60,13 +64,16 @@ const App = () => {
                   <>
                     <Banner />
                     <NewArrivals />
+                    <Banner2 />
+                    <TopSellers />
                   </>
                 }
               />
               <Route path="/products/:category?" element={<Products />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/product/:id" element={<ProductPage />} />
+              <Route path="/product/:id/:color?" element={<ProductPage />} />
+              <Route path="/adminProduct/:id" element={<AdminProductsPage />} />
               <Route path="/orderForm" element={<CheckoutPage />} />
             </Routes>
           </div>

@@ -4,7 +4,11 @@ const orderController = require('../controllers/orderController');
 const router = express.Router();
 
 router.post('/createOrder', orderController.createOrder);
-router.get('/getOrders/:user_id', orderController.getUserOrders);
+
+router.patch('/updateStatus', orderController.updateStatus);
+
+router.get('/getOrders', orderController.getOrders);
+
 
 
 module.exports = router;    

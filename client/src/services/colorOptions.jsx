@@ -1,0 +1,17 @@
+export const colorOptions = [
+  { hex: "#ff0000", name: "червоний" },
+  { hex: "#ff1493", name: "яскраво-рожевий" },
+  { hex: "#ffC0CB", name: "світло-рожевий" },
+  { hex: "#ffa500", name: "помаранчевий" },
+  { hex: "#ffff00", name: "жовтий" },
+  { hex: "#808000", name: "оливковий" },
+  { hex: "#00ff00", name: "зелений" },
+  { hex: "#00ffff", name: "блакитний" },
+  { hex: "#0000ff", name: "синій" },
+  { hex: "#9400d3", name: "фіолетовий" },
+  { hex: "#8b4513", name: "коричневий" },
+  { hex: "#ffebcd", name: "бежевий" },
+  { hex: "#ffffff", name: "білий" },
+  { hex: "#808080", name: "сірий" },
+  { hex: "#000000", name: "чорний" },
+];

@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import Select from "react-select";
 import debounce from "lodash.debounce"; // Імпорт дебаунсінгу
 import { useCart } from "../context/CartContext";
+import { toast } from "react-custom-alert";
 
 export const CheckoutPage = () => {
   const baseUrl = useBaseUrl();
@@ -13,7 +14,8 @@ export const CheckoutPage = () => {
   const apiKey = "4308a61be59b3baa8155882c7baad178"; // Замініть на свій ключ API Нової Пошти
   const { fetchCartItemCount, loadLocalCartCount } = useCart();
 
-  const { cities, warehouses, setSelectedCityRef } = useNovaPoshta(apiKey);
+  const { cities, warehouses, setSelectedCityRef, selectedCityRef } =
+    useNovaPoshta(apiKey);
 
   const [userData, setUserData] = useState(null);
   const [cartItems, setCartItems] = useState([]);
@@ -24,6 +26,10 @@ export const CheckoutPage = () => {
     phone: "",
     email: "",
     novaPoshtaBranch: "",
+  });
+  const [novaPoshtaName, setNovaPoshtaName] = useState({
+    cityName: "",
+    branchName: "",
   });
   const [cityInput, setCityInput] = useState(""); // Додано для введення міста
   const [cityOptions, setCityOptions] = useState([]); // Стан для відображення опцій
@@ -92,8 +98,17 @@ export const CheckoutPage = () => {
     debouncedCityInputChange(inputValue);
   };
 
+  useEffect(() => {
+    setOrderData((prevOrderData) => ({
+      ...prevOrderData,
+      novaPoshtaBranch: `${novaPoshtaName.cityName}, ${novaPoshtaName.branchName}`,
+    }));
+  }, [novaPoshtaName]); // Спрацьовує при зміні novaPoshtaName
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log(orderData.novaPoshtaBranch)
 
     try {
       const response = await axios.post(`${baseUrl}/api/order/createOrder`, {
@@ -112,17 +127,17 @@ export const CheckoutPage = () => {
       );
 
       if (responseTg.data.success && response.data.success) {
-        alert("Замовлення успішно відправлено!");
+        toast.success("Замовлення успішно оформлено!");
       } else {
-        alert("Помилка під час відправки замовлення.");
+        toast.error("Не вдалось оформити замовлення");
       }
 
       axios.post(`${baseUrl}/api/cart/clearCart/${userData.user_id}`);
-      fetchCartItemCount(userData.user_id);
     } catch (error) {
       console.error("Помилка:", error);
-      alert("Не вдалося відправити замовлення.");
     }
+    fetchCartItemCount(userData.user_id);
+    console.log("Кошик очищено");
   };
 
   // Логіка для отримання результатів пошуку по всьому списку міст з сортуванням
@@ -201,9 +216,13 @@ export const CheckoutPage = () => {
           name="city"
           options={cityOptions}
           onInputChange={handleCityInputChange} // Викликаємо метод для обробки введеного тексту
-          onChange={(selectedOption) =>
-            setSelectedCityRef(selectedOption.value)
-          }
+          onChange={(selectedOption) => {
+            setSelectedCityRef(selectedOption.value);
+            setNovaPoshtaName({
+              ...novaPoshtaName,
+              cityName: selectedOption.label,
+            });
+          }}
           required
           placeholder="Оберіть місто"
           className="mb-3"
@@ -219,12 +238,12 @@ export const CheckoutPage = () => {
           value={warehouseOptions.find(
             (option) => option.value === orderData.novaPoshtaBranch
           )}
-          onChange={(selectedOption) =>
-            setOrderData({
-              ...orderData,
-              novaPoshtaBranch: selectedOption.value,
-            })
-          }
+          onChange={(selectedOption) =>{
+            setNovaPoshtaName({
+              ...novaPoshtaName,
+              branchName: selectedOption.label,
+            });
+          }}
           required
           placeholder="Оберіть відділення"
           className="mb-3"

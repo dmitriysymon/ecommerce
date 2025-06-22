@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { useBaseUrl } from "./BaseUrlContext";
 
 
 // Створення контексту
@@ -7,6 +8,7 @@ const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
+  const baseUrl = useBaseUrl();
   const [cartItemCount, setCartItemCount] = useState(0);
 
   // Функція для оновлення кількості товарів в кошику
@@ -18,7 +20,7 @@ export const CartProvider = ({ children }) => {
   const fetchCartItemCount = async (userId) => {
     try {
       const response = await fetch(
-        `http://192.168.31.115:5000/api/cart/getCartItemCount/${userId}`,
+        `${baseUrl}/api/cart/getCartItemCount/${userId}`,
         {
           method: "GET",
           credentials: "include",

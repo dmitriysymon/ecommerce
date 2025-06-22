@@ -70,7 +70,7 @@ const NewArrivals = () => {
 
   return (
     <section className="font-montserrat relative w-full mx-auto py-8">
-      <h2 className="text-3xl font-semibold mb-6 text-center">Новинки</h2>
+      <h2 className="text-3xl font-normal mb-6 text-center">Новинки</h2>
 
       {/* Контейнер товарів */}
       <div
@@ -96,15 +96,19 @@ const NewArrivals = () => {
               }
             >
               <div className="bg-transparent border-spacing-2 overflow-hidden rounded-md">
-                <img
-                  src={product.images[0] || "https://placehold.co/300x300"}
-                  alt={product.name}
-                  draggable={false}
-                  className="w-full h-full object-contain"
-                />
+                <div className="aspect-[4/5] w-full overflow-hidden bg-white">
+                  <img
+                    src={product.images[0] || "https://placehold.co/400x500"}
+                    alt={product.name}
+                    draggable={false}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="p-2 sm:p-4">
                   <p className="text-lg text-gray-800">{product.name}</p>
-                  <p className="text-gray-800 font-medium">{product.price} UAH</p>
+                  <p className="text-gray-800 font-medium">
+                    {product.price} UAH
+                  </p>
                 </div>
               </div>
             </div>

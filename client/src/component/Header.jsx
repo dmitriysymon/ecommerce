@@ -6,11 +6,11 @@ import { Menu, X } from "lucide-react";
 import cartIcon from "../res/icons/cart_w.png";
 import userIcon from "../res/icons/user_icon.png";
 import { fetchUserData } from "../services/userService";
-import CategoriesMenu from "./categoriesMenu";
-import { FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiChevronDown } from "react-icons/fi";
 import { motion } from "framer-motion";
+import SearchInput from "./SearchInput";
 
-const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
+const Header = ({ setIsAuthOpen, setCartModalOpen}) => {
   const baseUrl = useBaseUrl();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,12 +18,21 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
   const [userData, setUserData] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [isProductsMenuOpen, setIsProductsMenuOpen] = useState(false);
+  const [isMenMenuOpen, setIsMenMenuOpen] = useState(false);
+  const [isWomenMenuOpen, setIsWomenMenuOpen] = useState(false);
+  const [isKidsMenuOpen, setIsKidsMenuOpen] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null); // Для відкриття підкатегорій
+  const [activeCategory, setActiveCategory] = useState(null);
 
   const { cartItemCount, fetchCartItemCount, loadLocalCartCount } = useCart();
+
+  const navigateToSexCategory = (sex) => {
+    navigate(`/products?sex=${sex}`);
+    setIsMenuOpen(false);
+    setIsCategoriesOpen(false);
+    setActiveCategory(null);
+  };
 
   useEffect(() => {
     const checkSession = async () => {
@@ -39,6 +48,7 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
           if (user) {
             setUserData(user);
             setIsAdmin(user.root === 1);
+            fetchCartItemCount(user.user_id);
           }
         } else {
           setIsAuthenticated(false);
@@ -54,13 +64,25 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
 
     const fetchCategories = async () => {
       try {
-        const response = await fetch(
-          `${baseUrl}/api/product/getCategoriesMenu`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data);
+        const sexes = ["male", "female", "kids"];
+        const allResults = [];
+
+        for (const sex of sexes) {
+          const response = await fetch(
+            `${baseUrl}/api/product/getCategoriesBySex?sex=${sex}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            // Додаємо поле group для розрізнення в UI
+            const grouped = data.map((mainCategory) => ({
+              ...mainCategory,
+              group: sex === "kids" ? "kids" : sex === "male" ? "men" : "women",
+            }));
+            allResults.push(...grouped);
+          }
         }
+
+        setCategories(allResults);
       } catch (error) {
         console.error("Помилка при завантаженні категорій:", error);
       }
@@ -71,38 +93,41 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
   }, []);
 
   useEffect(() => {
-    if (userData && userData.user_id) {
-      fetchCartItemCount(userData.user_id);
-    }
-  }, [userData, fetchCartItemCount]);
-
-  useEffect(() => {
     let lastScrollY = window.scrollY;
 
     const handleScroll = () => {
-      if (window.innerWidth >= 768) {
-        if (window.scrollY > lastScrollY) {
-          setIsVisible(false);
+      const currentScroll = window.scrollY;
+
+      // Якщо дуже близько до верху — завжди показувати хедер
+      if (currentScroll < 50) {
+        setIsVisible(true);
+      } else {
+        if (currentScroll > lastScrollY) {
+          setIsVisible(false); // скрол вниз
         } else {
-          setIsVisible(true);
+          setIsVisible(true); // скрол вгору
         }
       }
-      lastScrollY = window.scrollY;
+
+      lastScrollY = currentScroll;
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleCategoryClick = (category) => {
+  const handleCategoryClick = (category, sex) => {
     const categorySlug = category === "Усі" ? "" : encodeURIComponent(category);
-    navigate(`/products/${categorySlug}`);
+    navigate(`/products?sex=${sex}&categories=${categorySlug}`);
+    setIsMenuOpen(false); // Закриваємо меню після переходу
+    setIsCategoriesOpen(false);
+    setActiveCategory(null);
   };
 
   return (
     <>
       <header
-        className={`bg-black sticky lg:fixed md:fixed top-0 left-0 w-full z-50 flex items-center justify-between h-16 px-4 font-montserrat tracking-wider transition-transform duration-500 ${
+        className={`bg-black fixed top-0 left-0 w-full z-50 flex items-center justify-between h-16 px-4 font-montserrat tracking-wider transition-transform duration-500 ${
           isVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -116,66 +141,172 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
         </div>
         <Link
           to="/"
-          className="text-white text-2xl font-montserrat hover:text-gray-400 transition-colors"
+          className="hidden lg:block text-white text-2xl font-montserrat hover:text-gray-400 transition-colors"
         >
           НОВИНКА
         </Link>
         <nav className="hidden md:flex space-x-6 items-center flex-grow justify-center">
-          <Link
-            to="/"
-            className="text-white hover:text-gray-400 transition-colors"
-          >
-            Головна
-          </Link>
-          {/* Товари з показом меню категорій */}
+          {/* Він */}
           <div
             className="relative"
-            onMouseEnter={() => setIsProductsMenuOpen(true)}
-            onMouseLeave={() => setIsProductsMenuOpen(false)}
+            onMouseEnter={() => setIsMenMenuOpen(true)}
+            onMouseLeave={() => setIsMenMenuOpen(false)}
           >
             <span
-              className="text-white hover:text-gray-400 transition-colors cursor-pointer"
-              onClick={() => handleCategoryClick("")}
+              className="text-white hover:text-gray-400 cursor-pointer"
+              onClick={() => navigateToSexCategory("male")}
             >
-              Товари
+              Чоловік
             </span>
-            {isProductsMenuOpen && categories.length > 0 && (
-              <div className="fixed left-0 w-screen bg-black text-white shadow-lg p-2 z-49 flex justify-center items-start">
-                <div className="flex space-x-6">
-                  {categories.map((mainCategory) => (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={
+                isMenMenuOpen ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }
+              }
+              transition={{ duration: 0.1 }}
+              className={`${
+                isMenMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+              } fixed left-0 w-screen bg-black text-white shadow-lg p-2 z-49 flex justify-center items-start`}
+            >
+              <div className="flex space-x-6">
+                {categories
+                  .filter((cat) => cat.group === "men")
+                  .map((mainCategory) => (
                     <div
                       key={mainCategory.main_category}
-                      className="px-6 text-center whitespace-nowrap"
+                      className="px-6 text-left flex flex-col items-start"
                     >
-                      <Link className="py-3 font-semibold block hover:text-gray-400 duration-200">
+                      <span className="py-3 font-semibold">
                         {mainCategory.main_category}
-                      </Link>
+                      </span>
                       {mainCategory.categories.map((category) => (
                         <button
                           key={category.category_id}
-                          onClick={() => handleCategoryClick(category.name)}
-                          className="block py-2 hover:text-gray-400 duration-200"
+                          onClick={() =>
+                            handleCategoryClick(category.name, "male")
+                          }
+                          className="py-2 hover:text-gray-400"
                         >
                           {category.name}
                         </button>
                       ))}
                     </div>
                   ))}
-                </div>
               </div>
-            )}
+            </motion.div>
           </div>
+
+          {/* Вона */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsWomenMenuOpen(true)}
+            onMouseLeave={() => setIsWomenMenuOpen(false)}
+          >
+            <span
+              className="text-white hover:text-gray-400 cursor-pointer"
+              onClick={() => navigateToSexCategory("female")}
+            >
+              Жінка
+            </span>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={
+                isWomenMenuOpen ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }
+              }
+              transition={{ duration: 0.1 }}
+              className={`${
+                isWomenMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+              } fixed left-0 w-screen bg-black text-white shadow-lg p-2 z-49 flex justify-center items-start`}
+            >
+              <div className="flex space-x-6">
+                {categories
+                  .filter((cat) => cat.group === "women")
+                  .map((mainCategory) => (
+                    <div
+                      key={mainCategory.main_category}
+                      className="px-6 text-left flex flex-col items-start"
+                    >
+                      <span className="py-3 font-semibold">
+                        {mainCategory.main_category}
+                      </span>
+                      {mainCategory.categories.map((category) => (
+                        <button
+                          key={category.category_id}
+                          onClick={() =>
+                            handleCategoryClick(category.name, "female")
+                          }
+                          className="py-2 hover:text-gray-400"
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Kids */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsKidsMenuOpen(true)}
+            onMouseLeave={() => setIsKidsMenuOpen(false)}
+          >
+            <span
+              className="text-white hover:text-gray-400 cursor-pointer"
+              onClick={() => navigateToSexCategory("kids")}
+            >
+              Діти
+            </span>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={
+                isKidsMenuOpen ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }
+              }
+              transition={{ duration: 0.1 }}
+              className={`${
+                isKidsMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+              } fixed left-0 w-screen bg-black text-white shadow-lg p-2 z-49 flex justify-center items-start`}
+            >
+              <div className="flex space-x-6">
+                {categories
+                  .filter((cat) => cat.group === "kids")
+                  .map((mainCategory) => (
+                    <div
+                      key={mainCategory.main_category}
+                      className="px-6 text-left flex flex-col items-start"
+                    >
+                      <span className="py-3 font-semibold">
+                        {mainCategory.main_category}
+                      </span>
+                      {mainCategory.categories.map((category) => (
+                        <button
+                          key={category.category_id}
+                          onClick={() =>
+                            handleCategoryClick(category.name, "kids")
+                          }
+                          className="py-2 hover:text-gray-400"
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+              </div>
+            </motion.div>
+          </div>
+
           <a
             href="#services"
             className="text-white hover:text-gray-400 transition-colors"
           >
-            Services
+            Опт
           </a>
           <Link
             to="#footer"
             className="text-white hover:text-gray-400 transition-colors"
           >
-            Contact
+            Контакти
           </Link>
           {isAdmin && (
             <Link
@@ -186,6 +317,7 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
             </Link>
           )}
         </nav>
+        <SearchInput />
         <div className="flex items-center space-x-4 z-50">
           <div
             className="relative flex flex-col items-center cursor-pointer duration-300 hover:brightness-50"
@@ -193,11 +325,10 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
           >
             <img src={cartIcon} alt="Cart" className="w-6 h-6 transition" />
             {cartItemCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-white text-black text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 bg-white text-black text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full z-[999]">
                 {cartItemCount}
               </span>
             )}
-            <span className="text-sm text-white mt-1">Кошик</span>
           </div>
 
           {isAuthenticated ? (
@@ -207,11 +338,6 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
                 alt="User Profile"
                 className="w-6 h-6 cursor-pointer transition duration-300 hover:brightness-50"
               />
-              {userData?.username && (
-                <span className="text-sm text-white mt-1">
-                  {userData.username}
-                </span>
-              )}
             </Link>
           ) : (
             <div
@@ -223,7 +349,6 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
                 alt="User Profile"
                 className="w-6 h-6 cursor-pointer transition duration-300 hover:brightness-50"
               />
-              <span className="text-sm text-white mt-1">Акаунт</span>
             </div>
           )}
         </div>
@@ -252,117 +377,145 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
         <Link
           to="/"
           className="text-white hover:text-gray-400 transition-colors"
+          onClick={() => setIsMenuOpen(false)}
         >
           Головна
         </Link>
 
-        {/* Товари */}
+        {/* Чоловік */}
         <div className="text-white">
           <button
             className="w-full text-left flex justify-between items-center"
-            onClick={(e) => {
-              // Зупиняємо натискання на кнопку з іконкою від виклику переходу по посиланню
-              e.stopPropagation();
-              setIsMenuOpen(!isMenuOpen);
-              handleCategoryClick("");
-            }}
+            onClick={() =>
+              setActiveCategory(activeCategory === "men" ? null : "men")
+            }
           >
-            Товари
-            <motion.div
-              initial={{ rotate: 0 }}
-              animate={{ rotate: isCategoriesOpen ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-center" // Збільшена область натискання для іконки
-            >
-              <FiChevronDown
-                size={20}
-                onClick={(e) => {
-                  e.stopPropagation(); // Зупиняємо подальшу обробку натискання
-                  setIsCategoriesOpen(!isCategoriesOpen);
-                }}
-              />
-            </motion.div>
+            Чоловік
+            <FiChevronDown
+              className={`transform transition-transform ${
+                activeCategory === "men" ? "rotate-180" : ""
+              }`}
+            />
           </button>
-
-          {/* Якщо меню категорій відкрите */}
-          {isCategoriesOpen && categories.length > 0 && (
+          {activeCategory === "men" && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="pl-2 space-y-3 mt-2"
+              className="pl-4 mt-2"
             >
-              {categories.map((mainCategory) => (
-                <div key={mainCategory.main_category}>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault(); // Зупиняємо подальше виконання переходу
-                      setIsMenuOpen(!isMenuOpen);
-                      handleCategoryClick(mainCategory.main_category);
-                    }}
-                    className="w-full text-base text-left text-white flex justify-between items-center"
-                  >
-                    {mainCategory.main_category}
-                    <motion.div
-                      initial={{ rotate: 0 }}
-                      animate={{
-                        rotate:
-                          activeCategory === mainCategory.main_category
-                            ? 180
-                            : 0,
-                      }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <FiChevronDown
-                        size={16}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Зупиняємо натискання на іконку від виконання переходу
-                          setActiveCategory(
-                            activeCategory === mainCategory.main_category
-                              ? null
-                              : mainCategory.main_category
-                          );
-                        }}
-                      />
-                    </motion.div>
-                  </button>
+              {categories
+                .filter((cat) => cat.group === "men")
+                .map((mainCategory) => (
+                  <div key={mainCategory.main_category}>
+                    <p className="font-semibold py-1">
+                      {mainCategory.main_category}
+                    </p>
+                    {mainCategory.categories.map((category) => (
+                      <button
+                        key={category.category_id}
+                        className="text-sm block px-2 py-1 text-white w-full text-left hover:bg-gray-700 rounded"
+                        onClick={() =>
+                          handleCategoryClick(category.name, "male")
+                        }
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+            </motion.div>
+          )}
+        </div>
 
-                  {/* Якщо ця категорія активна, показуємо підкатегорії */}
-                  {activeCategory === mainCategory.main_category && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="pl-1 mt-2"
-                    >
-                      {mainCategory.categories.map(
-                        (category, categoryIndex) => (
-                          <div key={category.category_id}>
-                            <button
-                              className="text-sm block px-2 py-1 text-white" // Скорочена область натискання для елементів
-                              onClick={(e) => {
-                                e.preventDefault(); // Зупиняємо подальше виконання переходу
-                                setIsMenuOpen(!isMenuOpen);
-                                handleCategoryClick(category.name);
-                              }}
-                            >
-                              {category.name}
-                            </button>
+        {/* Жінка */}
+        <div className="text-white">
+          <button
+            className="w-full text-left flex justify-between items-center"
+            onClick={() =>
+              setActiveCategory(activeCategory === "women" ? null : "women")
+            }
+          >
+            Жінка
+            <FiChevronDown
+              className={`transform transition-transform ${
+                activeCategory === "women" ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {activeCategory === "women" && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="pl-4 mt-2"
+            >
+              {categories
+                .filter((cat) => cat.group === "women")
+                .map((mainCategory) => (
+                  <div key={mainCategory.main_category}>
+                    <p className="font-semibold py-1">
+                      {mainCategory.main_category}
+                    </p>
+                    {mainCategory.categories.map((category) => (
+                      <button
+                        key={category.category_id}
+                        className="text-sm block px-2 py-1 text-white w-full text-left hover:bg-gray-700 rounded"
+                        onClick={() =>
+                          handleCategoryClick(category.name, "female")
+                        }
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+            </motion.div>
+          )}
+        </div>
 
-                            {/* Якщо це не остання підкатегорія, додаємо бордер */}
-                            {categoryIndex !==
-                              mainCategory.categories.length - 1 && (
-                              <div className="border-t-2 border-gray-400 opacity-40 my-2 rounded-full"></div>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </motion.div>
-                  )}
-
-                  {/* Якщо це не остання категорія, додаємо бордер */}
-                </div>
-              ))}
+        {/* Діти */}
+        <div className="text-white">
+          <button
+            className="w-full text-left flex justify-between items-center"
+            onClick={() =>
+              setActiveCategory(activeCategory === "kids" ? null : "kids")
+            }
+          >
+            Діти
+            <FiChevronDown
+              className={`transform transition-transform ${
+                activeCategory === "kids" ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {activeCategory === "kids" && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="pl-4 mt-2"
+            >
+              {categories
+                .filter((cat) => cat.group === "kids")
+                .map((mainCategory) => (
+                  <div key={mainCategory.main_category}>
+                    <p className="font-semibold py-1">
+                      {mainCategory.main_category}
+                    </p>
+                    {mainCategory.categories.map((category) => (
+                      <button
+                        key={category.category_id}
+                        className="text-sm block px-2 py-1 text-white w-full text-left hover:bg-gray-700 rounded"
+                        onClick={() =>
+                          handleCategoryClick(category.name, "kids")
+                        }
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
             </motion.div>
           )}
         </div>
@@ -370,20 +523,23 @@ const Header = ({ setIsAuthOpen, setCartModalOpen, setCategoriesMenuOpen }) => {
         <a
           href="#services"
           className="text-white hover:text-gray-400 transition-colors"
+          onClick={() => setIsMenuOpen(false)}
         >
-          Services
+          Опт
         </a>
         <Link
           to="#footer"
           className="text-white hover:text-gray-400 transition-colors"
+          onClick={() => setIsMenuOpen(false)}
         >
-          Contact
+          Контакти
         </Link>
 
         {isAdmin && (
           <Link
             to="/admin/products"
             className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors text-center"
+            onClick={() => setIsMenuOpen(false)}
           >
             Admin Panel
           </Link>

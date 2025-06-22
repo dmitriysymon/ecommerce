@@ -43,13 +43,9 @@ router.delete(
   productController.deleteProduct
 );
 
-router.get(
-  "/listProduct", productListController.getProducts
-);
+router.get("/listProduct", productListController.getProducts);
 
-
-
-
+router.get("/getProductById/:id", productListController.getProductByIdAndColor);
 
 router.post("/addCategory", categoryController.addCategory);
 
@@ -104,5 +100,9 @@ router.put(
 router.get("/getMainCategoryList", categoryController.getAllMainCategories);
 
 router.get("/getCategoriesMenu", categoryController.getCategoriesMenu);
+
+router.get("/getCategoriesBySex", categoryController.getCategoriesBySex);
+
+router.get("/search", productController.getProductsBy);
 
 module.exports = router;

@@ -11,8 +11,6 @@ const getUserData = async (req, res) => {
         }
   
         const user = userResult[0];
-
-        console.log(user)
   
   
         // Повертаємо користувача і історію покупок

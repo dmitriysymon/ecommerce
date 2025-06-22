@@ -1,42 +1,231 @@
-const db = require("../config/db");
+  const db = require("../config/db");
 
-// Отримання всіх товарів разом із фото
-const getProducts = async (req, res) => {
+  const serverUrl = "http://localhost:5000";
+
+  // Отримання всіх товарів разом із фото
+  const getProducts = async (req, res) => {
   try {
-    const [products] = await db.query(`SELECT 
-    p.product_id,
-    p.name,
-    p.description,
-    p.price,
-    p.stock,
-    p.created_at,
-    p.updated_at,
-    p.sku,
-    c.name AS category_name
-    FROM product p
-    JOIN category c ON p.category_id = c.category_id;`);
-    const [images] = await db.query("SELECT * FROM product_images");
+    const { sex, category, min_price, max_price } = req.query;
 
-    // Групуємо фото по product_id
-    const imageMap = {};
-    images.forEach((img) => {
-      if (!imageMap[img.product_id]) {
-        imageMap[img.product_id] = [];
+    const parseCommaSeparatedArray = (arr) => {
+      if (!arr) return [];
+      if (Array.isArray(arr)) {
+        return arr.flatMap(item =>
+          item.split(",").map(s => s.trim()).filter(Boolean)
+        );
       }
-      imageMap[img.product_id].push(`http://192.168.31.115:5000${img.image_url}`);
+      return arr.split(",").map(s => s.trim()).filter(Boolean);
+    };
+
+    const colors = parseCommaSeparatedArray(req.query.color);
+    const sizes = parseCommaSeparatedArray(req.query.size);
+
+    const filters = [];
+    const values = [];
+
+    let joins = `
+      FROM product p
+      JOIN category c ON p.category_id = c.category_id
+    `;
+
+    // Потрібен join з variants для фільтрації
+    const filterByVariants = colors.length > 0 || sizes.length > 0;
+    if (filterByVariants) {
+      joins += ` JOIN product_variants v ON p.product_id = v.product_id `;
+    }
+
+    if (sex) {
+      filters.push(`p.sex = ?`);
+      values.push(sex);
+    }
+
+    if (category) {
+      filters.push(`c.name = ?`);
+      values.push(category);
+    }
+
+    if (min_price) {
+      filters.push(`p.price >= ?`);
+      values.push(min_price);
+    }
+
+    if (max_price) {
+      filters.push(`p.price <= ?`);
+      values.push(max_price);
+    }
+
+    if (colors.length > 0) {
+      filters.push(`v.color IN (${colors.map(() => "?").join(",")})`);
+      values.push(...colors);
+    }
+
+    if (sizes.length > 0) {
+      filters.push(`v.size IN (${sizes.map(() => "?").join(",")})`);
+      values.push(...sizes);
+    }
+
+    let sql = `
+      SELECT DISTINCT p.product_id, p.name, p.description, p.price, p.stock,
+                      p.created_at, p.updated_at, p.sku, p.sex,
+                      c.name AS category_name
+      ${joins}
+    `;
+
+    if (filters.length > 0) {
+      sql += " WHERE " + filters.join(" AND ");
+    }
+
+    const [products] = await db.query(sql, values);
+
+    const [images] = await db.query("SELECT * FROM product_images");
+    const [variants] = await db.query("SELECT product_id, color, size FROM product_variants");
+
+    // Створимо мапу варіантів та фото
+    const imageMap = {};
+    images.forEach(({ product_id, color, image_url }) => {
+      const key = `${product_id}-${color}`;
+      if (!imageMap[key]) imageMap[key] = [];
+      imageMap[key].push(`${serverUrl}${image_url}`);
     });
 
-    // Додаємо масив фото до кожного товару
-    const updatedProducts = products.map((product) => ({
-      ...product,
-      images: imageMap[product.product_id] || [], // Якщо фото немає, повертаємо порожній масив
-    }));
+    const variantsMap = {};
+    variants.forEach(({ product_id, color, size }) => {
+      const key = `${product_id}-${color}`;
+      if (!variantsMap[key]) {
+        variantsMap[key] = { product_id, color, sizes: new Set() };
+      }
+      if (size) variantsMap[key].sizes.add(size);
+    });
 
-    res.json(updatedProducts);
+    const colorMap = {};
+    variants.forEach(({ product_id, color }) => {
+      if (!colorMap[product_id]) {
+        colorMap[product_id] = new Set();
+      }
+      colorMap[product_id].add(color);
+    });
+
+    const finalProducts = [];
+
+    for (const product of products) {
+      const relevantKeys = Object.keys(variantsMap).filter((key) => {
+        const [pId, color] = key.split("-");
+        if (parseInt(pId) !== product.product_id) return false;
+
+        const entry = variantsMap[key];
+        const sizeMatch =
+          sizes.length === 0 ||
+          Array.from(entry.sizes).some((s) => sizes.includes(s));
+        const colorMatch = colors.length === 0 || colors.includes(color);
+
+        return sizeMatch && colorMatch;
+      });
+
+      for (const key of relevantKeys) {
+        const entry = variantsMap[key];
+        finalProducts.push({
+          ...product,
+          color: entry.color,
+          sizes: Array.from(entry.sizes),
+          images: imageMap[key] || [],
+          colors: Array.from(colorMap[product.product_id] || []),
+        });
+      }
+    }
+
+    res.json(finalProducts);
   } catch (err) {
-    console.error("Помилка при отриманні товарів або фото:", err);
-    return res.status(500).json({ message: "Помилка сервера" });
+    console.error("Помилка при отриманні товарів:", err);
+    res.status(500).json({ message: "Помилка сервера" });
   }
-};
+  };
 
-module.exports = { getProducts };
+  const getProductByIdAndColor = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const color = req.query.color;
+
+      // Отримуємо основну інформацію про товар за id
+      const [products] = await db.query(
+        `
+        SELECT 
+          p.product_id,
+          p.name,
+          p.description,
+          p.price,
+          p.stock,
+          p.created_at,
+          p.updated_at,
+          p.sku,
+          p.sex,
+          c.name AS category_name
+        FROM product p
+        JOIN category c ON p.category_id = c.category_id
+        WHERE p.product_id = ?;
+      `,
+        [id]
+      );
+
+      if (products.length === 0) {
+        return res.status(404).json({ message: "Товар не знайдено" });
+      }
+
+      const product = products[0];
+
+      // Отримуємо варіанти товару (всі кольори, і розміри для потрібного кольору)
+      const [variants] = await db.query(
+        `
+        SELECT color, size
+        FROM product_variants
+        WHERE product_id = ?;
+      `,
+        [id]
+      );
+
+      // Збираємо всі унікальні кольори для цього товару
+      const allColors = new Set();
+      // Збираємо розміри тільки для вибраного кольору
+      const sizesForColor = new Set();
+
+      variants.forEach(({ color: variantColor, size }) => {
+        allColors.add(variantColor);
+        if (variantColor === color) {
+          sizesForColor.add(size);
+        }
+      });
+
+      if (!allColors.has(color)) {
+        return res
+          .status(404)
+          .json({ message: "Кольорова варіація не знайдена" });
+      }
+
+      // Отримуємо фото для цього товару і кольору
+      const [images] = await db.query(
+        `
+        SELECT image_url
+        FROM product_images
+        WHERE product_id = ? AND color = ?;
+      `,
+        [id, color]
+      );
+
+      const imageUrls = images.map((img) => `${serverUrl}${img.image_url}`);
+
+      // Формуємо відповідь
+      const result = {
+        ...product,
+        color,
+        sizes: Array.from(sizesForColor),
+        images: imageUrls,
+        colors: Array.from(allColors),
+      };
+
+      res.json(result);
+    } catch (err) {
+      console.error("Помилка при отриманні товару:", err);
+      res.status(500).json({ message: "Помилка сервера" });
+    }
+  };
+
+  module.exports = { getProducts, getProductByIdAndColor };

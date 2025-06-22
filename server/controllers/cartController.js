@@ -1,11 +1,8 @@
 const pool = require("../config/db"); // Підключення до БД
 
 exports.addToCart = async (req, res) => {
-  console.log("Запит на оновлення кошика отримано");
   try {
-    const { product_id, quantity, user_id, image_url } = req.body;
-
-    console.log("Отримані дані:", { product_id, quantity, user_id, image_url });
+    const { product_id, quantity, user_id, image_url, size, color } = req.body;
 
     // Перевіряємо, чи товар вже є в кошику користувача
     const [existingCartItem] = await pool.execute(
@@ -21,18 +18,16 @@ exports.addToCart = async (req, res) => {
         existingCartItem[0].cart_id,
       ]);
 
-      console.log(`Кількість товару оновлено до ${newQuantity}`);
       return res
         .status(200)
         .json({ message: "Кількість товару оновлено", newQuantity });
     } else {
       // Якщо товару немає, додаємо новий запис
       const [result] = await pool.execute(
-        `INSERT INTO cart (user_id, product_id, quantity, image_url) VALUES (?, ?, ?, ?)`,
-        [user_id, product_id, quantity, image_url]
+        `INSERT INTO cart (user_id, product_id, quantity, image_url, size, color) VALUES (?, ?, ?, ?, ?, ?)`,
+        [user_id, product_id, quantity, image_url, size, color]
       );
 
-      console.log(`Товар успішно додано до кошика, ID: ${result.insertId}`);
       return res
         .status(201)
         .json({ message: "Товар додано успішно", cartId: result.insertId });
@@ -46,11 +41,10 @@ exports.addToCart = async (req, res) => {
 };
 
 exports.updateQuantity = async (req, res) => {
-  console.log("Запит на оновлення кількості товару в кошику");
+
   try {
     const { cart_id, quantity } = req.body;
 
-    console.log(`Отримані дані: ${cart_id} ${quantity}`);
 
     // Перевірка, чи існує товар в кошику
     const [existingCartItem] = await pool.execute(
@@ -81,7 +75,6 @@ exports.updateQuantity = async (req, res) => {
 };
 
 exports.removeFromCart = async (req, res) => {
-  console.log("Запит на видалення товару з кошика");
   try {
     const { cart_id } = req.body;
 
@@ -98,7 +91,6 @@ exports.removeFromCart = async (req, res) => {
     // Видалення товару з кошика
     await pool.execute(`DELETE FROM cart WHERE cart_id = ?`, [cart_id]);
 
-    console.log(`Товар успішно видалено з кошика`);
     return res.status(200).json({ message: "Товар успішно видалено з кошика" });
   } catch (error) {
     console.error("Помилка при видаленні товару з кошика:", error);
@@ -110,20 +102,17 @@ exports.removeFromCart = async (req, res) => {
 };
 
 exports.getCartItems = async (req, res) => {
-  console.log("Запит на отримання всіх товарів з кошика");
   try {
     const { user_id } = req.params;
 
     // Витягуємо всі записи з кошика для користувача, включаючи назву продукту та ціну
     const [cartItems] = await pool.execute(
-      `SELECT product.product_id, cart.cart_id, cart.quantity, cart.image_url, product.name AS name, product.description, product.sku, product.price 
+      `SELECT product.product_id, cart.cart_id, cart.size, cart.color, cart.quantity, cart.image_url, product.name AS name, product.description, product.sku, product.price 
              FROM cart 
              JOIN product ON cart.product_id = product.product_id
              WHERE cart.user_id = ?`,
       [user_id]
     );
-
-    console.log("Отримані товари з кошика:", cartItems);
 
     if (cartItems.length === 0) {
       return res.status(404).json({ message: "Кошик порожній" });
@@ -135,7 +124,6 @@ exports.getCartItems = async (req, res) => {
       totalPrice: (item.quantity * item.price).toFixed(2),
     }));
 
-    console.log("Товари в кошику отримано");
     return res.status(200).json(itemsWithTotalPrice);
   } catch (error) {
     console.error("Помилка при отриманні товарів з кошика:", error);
@@ -147,7 +135,6 @@ exports.getCartItems = async (req, res) => {
 };
 
 exports.getTotalPrice = async (req, res) => {
-  console.log("Запит на отримання загальної суми всіх товарів в кошику");
   try {
     const { user_id } = req.params;
 
@@ -167,7 +154,6 @@ exports.getTotalPrice = async (req, res) => {
 
     // Переконуємось, що totalPrice — число, перед викликом toFixed()
     totalPrice = Number(totalPrice).toFixed(2);
-    console.log("Загальна сума товарів в кошику:", totalPrice);
     return res.status(200).json({ totalPrice });
   } catch (error) {
     console.error(
@@ -182,7 +168,6 @@ exports.getTotalPrice = async (req, res) => {
 };
 
 exports.getCartItemCount = async (req, res) => {
-  console.log("Запит на кількість товарів у кошику");
   try {
     const { user_id } = req.params;
 
