@@ -16,7 +16,7 @@ const TopSellers = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${baseUrl}/api/product/listProduct`);
+      const response = await fetch(`${baseUrl}/api/product/getTopSellers`);
       const data = await response.json();
       const sortedProducts = data.sort(
         (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -70,7 +70,7 @@ const TopSellers = () => {
 
   return (
     <section className="font-montserrat relative w-full mx-auto py-8">
-      <h2 className="text-3xl font-semibold mb-6 text-center">
+      <h2 className="text-3xl font-normal mb-6 text-center">
         Лідери продажів
       </h2>
 

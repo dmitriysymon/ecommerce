@@ -80,14 +80,10 @@ exports.deleteProduct = async (req, res) => {
   try {
     const { productId } = req.query;
 
-    const [result] = await pool.execute(
-      `DELETE FROM product WHERE product_id = ?`,
+    await pool.execute(
+      `UPDATE product SET is_deleted = 1 WHERE product_id = ?`,
       [productId]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Товар не знайдено" });
-    }
 
     res.status(200).json({ message: "Товар видалено успішно" });
   } catch (error) {

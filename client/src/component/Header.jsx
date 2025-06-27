@@ -34,6 +34,13 @@ const Header = ({ setIsAuthOpen, setCartModalOpen}) => {
     setActiveCategory(null);
   };
 
+  const scrollToBottom = () => {
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: "smooth",
+  });
+};
+
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -302,12 +309,12 @@ const Header = ({ setIsAuthOpen, setCartModalOpen}) => {
           >
             Опт
           </a>
-          <Link
-            to="#footer"
+          <button
+            onClick={scrollToBottom}
             className="text-white hover:text-gray-400 transition-colors"
           >
             Контакти
-          </Link>
+          </button>
           {isAdmin && (
             <Link
               to="/admin/products"

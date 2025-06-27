@@ -35,63 +35,73 @@ const Products = () => {
   });
 
   useEffect(() => {
-  const fetchEverything = async () => {
-    setLoading(true);
+    const fetchEverything = async () => {
+      setLoading(true);
 
-    // 1️⃣ Оновити фільтри з URL
-    const newSex = queryParams.get("sex") || "";
-    const newCategories = queryParams.get("categories")?.split(",") || [];
-    const newSizes = parseQueryArray(queryParams.getAll("sizes"));
-    const newColors = parseQueryArray(queryParams.getAll("colors"));
-    const newMinPrice = queryParams.get("min_price") || null;
-    const newMaxPrice = queryParams.get("max_price") || null;
+      // 1️⃣ Оновити фільтри з URL
+      const newSex = queryParams.get("sex") || "";
+      const newCategories = queryParams.get("categories")?.split(",") || [];
+      const newSizes = parseQueryArray(queryParams.getAll("sizes"));
+      const newColors = parseQueryArray(queryParams.getAll("colors"));
+      const newMinPrice = queryParams.get("min_price") || null;
+      const newMaxPrice = queryParams.get("max_price") || null;
 
-    setSelectedSex(newSex);
-    setSelectedCategories(newCategories);
-    setSelectedSizes(newSizes);
-    setSelectedColors(newColors);
-    setPriceMin(newMinPrice);
-    setPriceMax(newMaxPrice);
+      setSelectedSex(newSex);
+      setSelectedCategories(newCategories);
+      setSelectedSizes(newSizes);
+      setSelectedColors(newColors);
+      setPriceMin(newMinPrice);
+      setPriceMax(newMaxPrice);
 
-    try {
-      // 2️⃣ Отримати категорії
-      const categoriesRes = await fetch(`${baseUrl}/api/product/getCategoriesMenu`);
-      if (categoriesRes.ok) {
-        const data = await categoriesRes.json();
-        setCategories(data);
+      try {
+        // 2️⃣ Отримати категорії
+        const categoriesRes = await fetch(
+          `${baseUrl}/api/product/getCategoriesMenu`
+        );
+        if (categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          setCategories(data);
+        }
+
+        // 3️⃣ Отримати продукти
+        const productsRes = await axios.get(
+          `${baseUrl}/api/product/listProduct`,
+          {
+            params: {
+              sex: newSex,
+              category: newCategories?.[0],
+              color: newColors,
+              size: newSizes,
+              min_price: newMinPrice,
+              max_price: newMaxPrice,
+            },
+          }
+        );
+
+        setProducts(productsRes.data);
+        setAvailableFilters(getAvailableFilters(productsRes.data));
+      } catch (error) {
+        console.error("Помилка при завантаженні:", error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // 3️⃣ Отримати продукти
-      const productsRes = await axios.get(`${baseUrl}/api/product/listProduct`, {
-        params: {
-          sex: newSex,
-          category: newCategories?.[0],
-          color: newColors,
-          size: newSizes,
-          min_price: newMinPrice,
-          max_price: newMaxPrice,
-        },
-      });
-
-      setProducts(productsRes.data);
-      setAvailableFilters(getAvailableFilters(productsRes.data));
-    } catch (error) {
-      console.error("Помилка при завантаженні:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchEverything();
-}, [location.search]);
-
+    fetchEverything();
+  }, [location.search]);
 
   const sortedProducts = useMemo(() => {
+    const unique = new Map();
+    products.forEach((p) => {
+      if (!unique.has(p.product_id)) unique.set(p.product_id, p);
+    });
+    const deduplicated = Array.from(unique.values());
+
     if (sortOption === "priceAsc")
-      return [...products].sort((a, b) => a.price - b.price);
+      return [...deduplicated].sort((a, b) => a.price - b.price);
     if (sortOption === "priceDesc")
-      return [...products].sort((a, b) => b.price - a.price);
-    return products;
+      return [...deduplicated].sort((a, b) => b.price - a.price);
+    return deduplicated;
   }, [products, sortOption]);
 
   const getSexDisplayName = (sex) => {

@@ -4,75 +4,6 @@ import "react-tabs/style/react-tabs.css";
 import "../res/styles/UserProfile.css";
 import { useBaseUrl } from "../context/BaseUrlContext";
 
-const statusColors = {
-  pending: "bg-yellow-200 text-yellow-800",
-  completed: "bg-green-200 text-green-800",
-  canceled: "bg-red-200 text-red-800",
-};
-
-const OrderHistory = ({ orders }) => {
-  const [expandedOrder, setExpandedOrder] = useState(null);
-
-  const toggleOrder = (orderId) => {
-    setExpandedOrder(expandedOrder === orderId ? null : orderId);
-  };
-
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Історія покупок</h2>
-      {orders.length > 0 ? (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.order_id}
-              className="border p-4 rounded-lg shadow-sm bg-white"
-            >
-              <div
-                className="flex justify-between items-center cursor-pointer"
-                onClick={() => toggleOrder(order.order_id)}
-              >
-                <div>
-                  <p className="font-bold">Номер замовлення: {order.order_id}</p>
-                  <p>Дата: {order.order_date}</p>
-                  <p>Сума: {order.total_price} грн</p>
-                </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-bold ${statusColors[order.status]}`}
-                >
-                  {order.status}
-                </span>
-              </div>
-              {expandedOrder === order.order_id && order.items.length > 0 && (
-                <div className="mt-4 border-t pt-4">
-                  <h3 className="text-lg font-medium">Товари:</h3>
-                  <ul className="space-y-2">
-                    {order.items.map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-4">
-                        <img
-                          src={item.product_image}
-                          alt={item.product_name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div>
-                          <p className="font-medium">{item.product_name}</p>
-                          <p>Кількість: {item.quantity}</p>
-                          <p>Ціна: {item.product_price} грн</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-600">Немає історії покупок.</p>
-      )}
-    </div>
-  );
-};
-
 const UserProfile = () => {
   const [userData, setUserData] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -90,39 +21,16 @@ const UserProfile = () => {
 
         if (!userResponse.ok) throw new Error("Не вдалося отримати дані");
         const response = await userResponse.json();
-        setUserData(response.userData);
+        const user = response.userData;
+        setUserData(user);
 
-        const userId = response.userData.user_id;
-        if (!userId) throw new Error("Не вдалося отримати ID користувача");
+        if (!user.user_id) throw new Error("Не вдалося отримати ID користувача");
 
-        const ordersResponse = await fetch(
-          `${baseUrl}/api/order/getOrders/${userId}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!ordersResponse.ok) throw new Error("Помилка отримання історії");
+        // Отримати замовлення користувача
+        const ordersResponse = await fetch(`${baseUrl}/api/order/getOrders?user_id=${user.user_id}`);
+        if (!ordersResponse.ok) throw new Error("Не вдалося отримати історію замовлень");
         const ordersData = await ordersResponse.json();
-
-        if (ordersData.orders && Array.isArray(ordersData.orders)) {
-          const formattedOrders = ordersData.orders.map((order) => ({
-            order_id: order.order_id,
-            order_date: new Date(order.order_date).toLocaleDateString(),
-            total_price: order.total_price,
-            status: order.status,
-            items: order.items.map((item) => ({
-              product_name: item.product_name,
-              product_image: baseUrl + item.product_image,
-              quantity: item.quantity,
-              product_price: item.product_price,
-            })),
-          }));
-          setOrders(formattedOrders);
-        } else {
-          throw new Error("Невірна структура історії покупок");
-        }
+        setOrders(ordersData);
       } catch (error) {
         setError(error.message);
       } finally {
@@ -161,7 +69,34 @@ const UserProfile = () => {
               )}
             </TabPanel>
             <TabPanel>
-              <OrderHistory orders={orders} />
+              <h2 className="text-xl font-semibold mb-4">Історія покупок</h2>
+              {orders.length === 0 ? (
+                <p>Немає замовлень.</p>
+              ) : (
+                <div className="space-y-6">
+                  {orders.map((order) => (
+                    <div key={order.order_id} className="border rounded-lg p-4 bg-white shadow">
+                      <div className="mb-2">
+                        <p><strong>ID замовлення:</strong> {order.order_id}</p>
+                        <p><strong>Статус:</strong> {order.status}</p>
+                        <p><strong>Телефон:</strong> {order.phone}</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {order.items.map((item, index) => (
+                          <div key={index} className="border p-3 rounded-lg bg-gray-50">
+                            <img src={item.image_url} alt={item.product_name} className="w-full h-32 object-cover mb-2 rounded" />
+                            <p className="font-medium">{item.product_name}</p>
+                            <p>Кількість: {item.quantity}</p>
+                            <p>Ціна: {item.price} грн</p>
+                            <p>Колір: {item.color}</p>
+                            <p>Розмір: {item.size}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </TabPanel>
           </div>
         </div>

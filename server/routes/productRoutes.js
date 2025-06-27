@@ -103,6 +103,14 @@ router.get("/getCategoriesMenu", categoryController.getCategoriesMenu);
 
 router.get("/getCategoriesBySex", categoryController.getCategoriesBySex);
 
+router.get("/getTopSellers", productListController.getTopSellers);
+
+router.get("/getNewArrivals", productListController.getNewArrivals);
+
+router.get("/getSimilarProducts/:product_id", productListController.getSimilarProducts);
+
+
+
 router.get("/search", productController.getProductsBy);
 
 module.exports = router;

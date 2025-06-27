@@ -4,7 +4,8 @@ import arrow_l from "../assets/arrow_l.svg";
 import arrow_r from "../assets/arrow_r.svg";
 import { useBaseUrl } from "../context/BaseUrlContext";
 
-const LikeToo = () => {
+const LikeToo = ({product}) => {
+  const productId = product?.product_id;
   const baseUrl = useBaseUrl();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [products, setProducts] = useState([]);
@@ -16,12 +17,11 @@ const LikeToo = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${baseUrl}/api/product/listProduct`);
+      const response = await fetch(
+      `${baseUrl}/api/product/getSimilarProducts/${product.product_id}`
+    );
       const data = await response.json();
-      const sortedProducts = data.sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at)
-      );
-      setProducts(sortedProducts);
+      setProducts(data);
     } catch (error) {
       console.error("Помилка при отриманні продуктів:", error);
     }
