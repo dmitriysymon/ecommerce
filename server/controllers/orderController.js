@@ -1,6 +1,7 @@
 const pool = require("../config/db");
+const config = require('../../config/serverConfig')
 
-const serverUrl = "http://localhost:5000";
+const serverUrl = config.imageURL;
 
 exports.createOrder = async (req, res) => {
   console.log(req.body);

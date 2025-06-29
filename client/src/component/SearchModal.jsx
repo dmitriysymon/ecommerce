@@ -65,7 +65,7 @@ const SearchModal = ({ isOpen, onClose, query }) => {
               >
                 <div className="w-full aspect-[4/5] overflow-hidden mb-4 bg-white">
                   <img
-                    src={`http://localhost:5000` + product.image_url}
+                    src={baseUrl + product.image_url}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />

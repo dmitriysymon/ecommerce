@@ -10,6 +10,8 @@ const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const telegramRoutes = require('./routes/telegramRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const config = require('../config/serverConfig')
+
 
 const app = express();
 
@@ -17,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: config.cors,
   credentials: true,
 }));
 app.use(sessionConfig);

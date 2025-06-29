@@ -1,6 +1,7 @@
 const db = require("../config/db");
+const config = require('../../config/serverConfig')
 
-const serverUrl = "http://localhost:5000";
+const serverUrl = config.imageURL;
 
 // Отримання всіх товарів разом із фото
 const getProducts = async (req, res) => {
