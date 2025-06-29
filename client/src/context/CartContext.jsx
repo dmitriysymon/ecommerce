@@ -29,7 +29,6 @@ export const CartProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         updateCartItemCount(data.itemCount);
-        console.log("Кількість товарів в кошику:", data.itemCount);
       }
     } catch (error) {
       updateCartItemCount(0);

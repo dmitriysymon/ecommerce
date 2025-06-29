@@ -90,12 +90,17 @@ const LikeToo = ({product}) => {
           {products.map((product) => (
             <div
               key={product.product_id}
-              className={`flex-none w-1/2 sm:w-1/3 lg:w-1/5 p-4 cursor-pointer transform transition-transform duration-300 hover:scale-105`}
-              onClick={() =>
-                navigate(`/product/${product.product_id}`, {
+              className="flex-none w-1/2 sm:w-1/3 lg:w-1/5 p-4 cursor-pointer transform transition-transform duration-300 lg:hover:scale-105"
+              onClick={() => {
+                const selectedColor =
+                  product.color ?? product.colors?.[0] ?? null;
+                const colorSlug = selectedColor
+                  ? encodeURIComponent(selectedColor)
+                  : "";
+                navigate(`/product/${product.product_id}/${colorSlug}`, {
                   state: { product },
-                })
-              }
+                });
+              }}
             >
               <div className="bg-transparent border-spacing-2 overflow-hidden rounded-md">
                 <div className="aspect-[4/5] w-full overflow-hidden bg-white">

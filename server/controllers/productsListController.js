@@ -70,6 +70,8 @@ const getProducts = async (req, res) => {
       values.push(...sizes);
     }
 
+    filters.push(`p.is_deleted = 0`);
+
     let sql = `
       SELECT DISTINCT p.product_id, p.name, p.description, p.price, p.stock,
                       p.created_at, p.updated_at, p.sku, p.sex,
@@ -80,8 +82,6 @@ const getProducts = async (req, res) => {
     if (filters.length > 0) {
       sql += " WHERE " + filters.join(" AND ");
     }
-
-    filters.push(`p.is_deleted = 0`);
 
     const [products] = await db.query(sql, values);
 

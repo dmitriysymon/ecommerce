@@ -2,49 +2,71 @@ const pool = require("../config/db"); // Підключення до БД
 
 exports.addToCart = async (req, res) => {
   try {
-    const { product_id, quantity, user_id, image_url, size, color } = req.body;
+    const { product_id, quantity, user_id, image_url, size, color, name, price } = req.body;
 
-    // Перевіряємо, чи товар вже є в кошику користувача
+    if (!product_id || !quantity || !size || !color) {
+      return res.status(400).json({ message: "Необхідні дані відсутні" });
+    }
+
+    // Якщо user_id відсутній — повертаємо інструкцію зберегти локально
+    if (!user_id) {
+      return res.status(200).json({
+        message: "local",
+        item: {
+          product_id,
+          name,
+          price,
+          quantity,
+          image_url,
+          size,
+          color,
+        },
+      });
+    }
+
+    // Інакше — зберігаємо в БД
     const [existingCartItem] = await pool.execute(
-      `SELECT cart_id, quantity FROM cart WHERE user_id = ? AND product_id = ?`,
-      [user_id, product_id]
+      `SELECT cart_id, quantity FROM cart WHERE user_id = ? AND product_id = ? AND size = ? AND color = ?`,
+      [user_id, product_id, size, color]
     );
 
     if (existingCartItem.length > 0) {
-      // Якщо товар вже є в кошику, оновлюємо його кількість
       const newQuantity = existingCartItem[0].quantity + quantity;
-      await pool.execute(`UPDATE cart SET quantity = ? WHERE cart_id = ?`, [
-        newQuantity,
-        existingCartItem[0].cart_id,
-      ]);
+      await pool.execute(
+        `UPDATE cart SET quantity = ? WHERE cart_id = ?`,
+        [newQuantity, existingCartItem[0].cart_id]
+      );
 
-      return res
-        .status(200)
-        .json({ message: "Кількість товару оновлено", newQuantity });
+      return res.status(200).json({
+        message: "Кількість товару оновлено",
+        newQuantity,
+      });
     } else {
-      // Якщо товару немає, додаємо новий запис
       const [result] = await pool.execute(
         `INSERT INTO cart (user_id, product_id, quantity, image_url, size, color) VALUES (?, ?, ?, ?, ?, ?)`,
         [user_id, product_id, quantity, image_url, size, color]
       );
 
-      return res
-        .status(201)
-        .json({ message: "Товар додано успішно", cartId: result.insertId });
+      return res.status(201).json({
+        message: "Товар додано успішно",
+        cartId: result.insertId,
+      });
     }
   } catch (error) {
     console.error("Помилка при оновлені кошика:", error);
-    res
-      .status(500)
-      .json({ message: "Помилка при оновлені кошика", error: error.message });
+    res.status(500).json({
+      message: "Помилка при оновлені кошика",
+      error: error.message,
+    });
   }
 };
+
+
 
 exports.updateQuantity = async (req, res) => {
 
   try {
     const { cart_id, quantity } = req.body;
-
 
     // Перевірка, чи існує товар в кошику
     const [existingCartItem] = await pool.execute(

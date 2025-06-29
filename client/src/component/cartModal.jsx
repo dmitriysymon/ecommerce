@@ -72,34 +72,65 @@ const CartModal = ({ isOpen, closeCart }) => {
     }
   };
 
-  const handleRemoveFromCart = async (cartId) => {
-    try {
-      await axios.post(`${baseUrl}/api/cart/removeFromCart`, {
-        cart_id: cartId,
-      });
-      fetchCartItems();
-      fetchTotalPrice();
-      fetchCartItemCount(userData.user_id);
-    } catch (error) {
-      console.error("Помилка при видаленні товару", error);
+  const handleRemoveFromCart = async (cartId, localIndex = null) => {
+    if (userData) {
+      try {
+        await axios.post(`${baseUrl}/api/cart/removeFromCart`, {
+          cart_id: cartId,
+        });
+        fetchCartItems();
+        fetchTotalPrice();
+        fetchCartItemCount(userData.user_id);
+      } catch (error) {
+        console.error("Помилка при видаленні товару", error);
+      }
+    } else {
+      let localCart = [...cartItems];
+      if (localIndex !== null) {
+        localCart.splice(localIndex, 1);
+        localStorage.setItem("cart", JSON.stringify(localCart));
+        setCartItems(localCart);
+        setTotalPrice(
+          localCart.reduce((acc, item) => acc + item.price * item.quantity, 0)
+        );
+        loadLocalCartCount();
+      }
     }
   };
 
-  const handleQuantityChange = async (cartId, quantity, amount) => {
+  const handleQuantityChange = async (
+    cartId,
+    quantity,
+    amount,
+    localIndex = null
+  ) => {
     const newQuantity = quantity + amount;
     if (newQuantity < 1) return;
 
-    try {
-      await axios.post(`${baseUrl}/api/cart/updateQuantity`, {
-        cart_id: cartId,
-        quantity: newQuantity,
-      });
+    if (userData) {
+      // Серверний кошик
+      try {
+        await axios.post(`${baseUrl}/api/cart/updateQuantity`, {
+          cart_id: cartId,
+          quantity: newQuantity,
+        });
 
-      fetchCartItems();
-      fetchTotalPrice();
-      fetchCartItemCount(userData.user_id);
-    } catch (error) {
-      console.error("Помилка при оновленні кількості", error);
+        fetchCartItems();
+        fetchTotalPrice();
+        fetchCartItemCount(userData.user_id);
+      } catch (error) {
+        console.error("Помилка при оновленні кількості", error);
+      }
+    } else {
+      // Локальний кошик
+      const updatedCart = [...cartItems];
+      updatedCart[localIndex].quantity = newQuantity;
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      setCartItems(updatedCart);
+      setTotalPrice(
+        updatedCart.reduce((acc, item) => acc + item.price * item.quantity, 0)
+      );
+      loadLocalCartCount();
     }
   };
 
@@ -131,62 +162,33 @@ const CartModal = ({ isOpen, closeCart }) => {
         <div className="p-4 overflow-y-auto max-h-[80vh]">
           {userData === null ? (
             <p>Завантаження даних користувача...</p>
-          ) : userData === false ? (
-            cartItems.length > 0 ? (
-              cartItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between mb-4"
-                >
-                  <div className="flex items-center">
-                    <img
-                      src={item.image_url}
-                      alt={item.product_name}
-                      className="w-12 h-12 object-cover mr-4"
-                    />
-                    <div>
-                      <p>{item.product_name}</p>
-                      <p className="text-gray-600">₴{item.price}</p>
-                    </div>
-                  </div>
-                  <span>Кількість: {item.quantity}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-500 mt-10">Кошик порожній</p>
-            )
           ) : cartItems.length > 0 ? (
-            cartItems.map((item) => (
+            cartItems.map((item, index) => (
               <div
-                key={item.cart_id}
+                key={index}
                 className="flex items-center justify-between mb-4"
               >
                 <div className="flex items-center">
                   <img
                     src={item.image_url}
-                    alt={item.name}
+                    alt={item.product_name}
                     className="w-12 h-12 object-cover mr-4"
                   />
                   <div>
-                    <p>{item.name}</p>
+                    <p>{item.product_name}</p>
                     <p className="text-gray-600">₴{item.price}</p>
-
-                    {/* Розмір і колір — виводяться, тільки якщо вони вказані */}
                     <div className="text-sm text-gray-500">
-                      {item.size && item.size !== "" && (
-                        <p>Розмір: {item.size}</p>
-                      )}
-                      {item.color && item.color !== "" && (
-                        <p>Колір: {item.color}</p>
-                      )}
+                      {item.size && <p>Розмір: {item.size}</p>}
+                      {item.color && <p>Колір: {item.color}</p>}
                     </div>
                   </div>
                 </div>
-
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={() =>
-                      handleQuantityChange(item.cart_id, item.quantity, -1)
+                      userData
+                        ? handleQuantityChange(item.cart_id, item.quantity, -1)
+                        : handleQuantityChange(null, item.quantity, -1, index)
                     }
                     className="px-2 py-1 bg-gray-300 rounded-full"
                   >
@@ -195,7 +197,9 @@ const CartModal = ({ isOpen, closeCart }) => {
                   <span>{item.quantity}</span>
                   <button
                     onClick={() =>
-                      handleQuantityChange(item.cart_id, item.quantity, +1)
+                      userData
+                        ? handleQuantityChange(item.cart_id, item.quantity, +1)
+                        : handleQuantityChange(null, item.quantity, +1, index)
                     }
                     className="px-2 py-1 bg-gray-300 rounded-full"
                   >
@@ -203,7 +207,11 @@ const CartModal = ({ isOpen, closeCart }) => {
                   </button>
                   <img
                     src={deleteIcon}
-                    onClick={() => handleRemoveFromCart(item.cart_id)}
+                    onClick={() =>
+                      userData
+                        ? handleRemoveFromCart(item.cart_id)
+                        : handleRemoveFromCart(null, index)
+                    }
                     className="w-7 h-7 cursor-pointer transition duration-300 hover:brightness-50"
                   />
                 </div>

@@ -12,6 +12,7 @@ const UserProfile = () => {
   const baseUrl = useBaseUrl();
 
   useEffect(() => {
+    document.title = "Особистий кабінет";
     const fetchUserData = async () => {
       try {
         const userResponse = await fetch(`${baseUrl}/api/session/getUser`, {

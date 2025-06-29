@@ -38,7 +38,7 @@ const Products = () => {
     const fetchEverything = async () => {
       setLoading(true);
 
-      // 1️⃣ Оновити фільтри з URL
+      // Оновити фільтри з URL
       const newSex = queryParams.get("sex") || "";
       const newCategories = queryParams.get("categories")?.split(",") || [];
       const newSizes = parseQueryArray(queryParams.getAll("sizes"));
@@ -53,8 +53,26 @@ const Products = () => {
       setPriceMin(newMinPrice);
       setPriceMax(newMaxPrice);
 
+      let title = "Товари";
+
+      const sexTitles = {
+        male: "для чоловіків",
+        female: "для жінок",
+        child: "для дітей",
+      };
+
+      if (newSex && sexTitles[newSex]) {
+        title += ` ${sexTitles[newSex]}`;
+      }
+
+      if (newCategories.length > 0) {
+        title += ` – ${newCategories.join(", ")}`;
+      }
+
+      document.title = title;
+
       try {
-        // 2️⃣ Отримати категорії
+        // Отримати категорії
         const categoriesRes = await fetch(
           `${baseUrl}/api/product/getCategoriesMenu`
         );
@@ -63,7 +81,7 @@ const Products = () => {
           setCategories(data);
         }
 
-        // 3️⃣ Отримати продукти
+        // Отримати продукти
         const productsRes = await axios.get(
           `${baseUrl}/api/product/listProduct`,
           {

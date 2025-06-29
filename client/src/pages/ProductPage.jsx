@@ -9,6 +9,7 @@ import arrow_r from "../assets/arrow_r.svg";
 import pointer_d from "../assets/pointer_d.svg";
 import { useSwipeable } from "react-swipeable";
 import LikeToo from "../component/LikeToo";
+import { fetchUserData } from "../services/userService";
 
 const ProductPage = () => {
   const baseUrl = useBaseUrl();
@@ -55,6 +56,9 @@ const ProductPage = () => {
             color || (response.data.colors ? response.data.colors[0] : null)
           );
           setSelectedSize("");
+          if (response.data.sizes.length === 1) {
+            setSelectedSize(response.data.sizes[0]);
+          }
           setCurrentImage(0);
           setQuantity(1);
         } else {
@@ -73,32 +77,8 @@ const ProductPage = () => {
     fetchProduct();
   }, [id, color, baseUrl]);
 
-  // Підрахунок максимального розміру картинки після завантаження продукту
   useEffect(() => {
-    if (!product || !product.images) return;
-
-    const loadImageSizes = async () => {
-      let maxWidth = 0;
-      let maxHeight = 0;
-
-      const promises = product.images.map((src) => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.src = src;
-          img.onload = () => {
-            if (img.width > maxWidth) maxWidth = img.width;
-            if (img.height > maxHeight) maxHeight = img.height;
-            resolve();
-          };
-          img.onerror = () => resolve(); // щоб не зависало
-        });
-      });
-
-      await Promise.all(promises);
-      setMaxSize({ width: maxWidth, height: maxHeight });
-    };
-
-    loadImageSizes();
+    document.title = product?.name || "Завантаження товару...";
   }, [product]);
 
   useEffect(() => {
@@ -116,65 +96,64 @@ const ProductPage = () => {
     }
 
     try {
-      const response = await fetch(`${baseUrl}/api/session/getUser`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const image_url = product.images[0];
 
-      if (response.ok) {
-        const data = await response.json();
-        const user_id = data.userData?.user_id;
+      const user = await fetchUserData(baseUrl);
 
-        if (user_id) {
-          const image_url = product.images[0];
-          await axios.post(`${baseUrl}/api/cart/addToCart`, {
-            product_id: product.product_id,
-            quantity,
-            user_id,
-            image_url,
-            size: selectedSize,
-            color: selectedColor,
-          });
-          toast.success("Товар додано до кошика!");
-          fetchCartItemCount(user_id);
-        } else {
-          addToLocalCart(product, quantity);
+
+
+      const response = await axios.post(
+        `${baseUrl}/api/cart/addToCart`,
+        {
+          product_id: product.product_id,
+          quantity,
+          price: product.price,
+          name: product.name,
+          size: selectedSize,
+          color: selectedColor,
+          image_url,
+          user_id: user.user_id,
+        },
+        {
+          withCredentials: true, // Щоб куки передавались, якщо потрібно
         }
+      );
+
+      const data = response.data;
+
+      if (data.message === "local") {
+        addToLocalCart(data.item);
       } else {
-        addToLocalCart(product, quantity);
+        toast.success("Товар додано до кошика!");
+        fetchCartItemCount(user.user_id); // можна без user_id, якщо твій хук сам бере його з сесії
       }
-    } catch (error) {
-      console.log("Помилка отримання користувача", error);
-      addToLocalCart(product, quantity);
+    } catch (err) {
+      console.error("Помилка додавання до кошика", err);
+      toast.error("Не вдалося додати товар");
     }
   };
 
-  const addToLocalCart = (product, quantity) => {
+  const addToLocalCart = (item) => {
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-    const existingItem = cart.find(
-      (item) =>
-        item.product_id === product.product_id &&
-        item.size === selectedSize &&
-        item.color === selectedColor
+    const existing = cart.find(
+      (c) =>
+        c.product_id === product.product_id &&
+        c.size === product.size &&
+        c.color === product.color
     );
 
-    if (existingItem) {
-      existingItem.quantity += quantity;
+    if (existing) {
+      existing.quantity += item.quantity;
     } else {
-      const image_url = product.images[0];
-      cart.push({
-        ...product,
-        quantity,
-        image_url,
-        size: selectedSize,
-        color: selectedColor,
-      });
+      cart.push(item);
     }
 
-    loadLocalCartCount();
+    console.log(cart);
+
     localStorage.setItem("cart", JSON.stringify(cart));
-    toast.success("Товар додано до кошика (локально)!");
+    loadLocalCartCount();
+    toast.success("Товар додано до кошика!");
   };
 
   const handlePrevImage = () => {
@@ -317,29 +296,33 @@ const ProductPage = () => {
             )}
 
             {/* Розміри */}
-            <div className="mb-4">
-              <div className="flex items-center space-x-1 mb-2">
-                <p className="text-sm text-gray-700">Розмір:</p>
-                <p className="text-sm text-gray-700">
-                  {selectedSize ? selectedSize.toUpperCase() : "Оберіть розмір"}
-                </p>
+            {product.sizes && product.sizes[0] !== "1" && (
+              <div className="mb-4">
+                <div className="flex items-center space-x-1 mb-2">
+                  <p className="text-sm text-gray-700">Розмір:</p>
+                  <p className="text-sm text-gray-700">
+                    {selectedSize
+                      ? selectedSize.toUpperCase()
+                      : "Оберіть розмір"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`w-10 h-10 border rounded-sm flex items-center justify-center cursor-pointer transition ${
+                        selectedSize === size
+                          ? "border-black font-bold"
+                          : "border-gray-400"
+                      }`}
+                    >
+                      {size.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-10 h-10 border rounded-sm flex items-center justify-center cursor-pointer transition ${
-                      selectedSize === size
-                        ? "border-black font-bold"
-                        : "border-gray-400"
-                    }`}
-                  >
-                    {size.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Кількість + Ціна */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
